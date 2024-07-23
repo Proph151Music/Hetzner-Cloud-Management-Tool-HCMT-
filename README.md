@@ -76,6 +76,11 @@ The Hetzner Cloud Management Tool (HCMT) is a powerful and efficient script desi
 5. Right-click on the page and select "Save As" or "Save Page As".
 6. Save the file as `hcmt.py` in your desired location, such as the `C:\Users\YourUsername\Downloads\` directory.
 
+### Ensure Python is in PATH (Windows Only)
+If Python is installed but not recognized in Command Prompt, run the following PowerShell command to add Python to your PATH. Open PowerShell as an administrator and run:
+
+```$pythonPath = (Get-Command python).Path; $pythonDir = Split-Path $pythonPath; $env:Path += ";$pythonDir;$pythonDir\Scripts"; [Environment]::SetEnvironmentVariable("Path", $env:Path, [System.EnvironmentVariableTarget]::Machine)```
+
 #### macOS
 
 1. Open your web browser.
