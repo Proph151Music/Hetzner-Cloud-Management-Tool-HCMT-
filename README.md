@@ -96,8 +96,7 @@ The Hetzner Cloud Management Tool (HCMT) is a powerful and efficient script desi
 
 Alternatively, you can use the terminal to download the file:
 
-```sh
-wget https://raw.githubusercontent.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/main/hcmt.py -O ~/Downloads/hcmt.py
+```wget https://raw.githubusercontent.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/main/hcmt.py -O ~/Downloads/hcmt.py```
 
 
 ### Step 3: Run the Script
