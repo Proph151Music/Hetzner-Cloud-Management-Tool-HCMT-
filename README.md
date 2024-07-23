@@ -65,14 +65,40 @@ The Hetzner Cloud Management Tool (HCMT) is a powerful and efficient script desi
         sudo pacman -S python
         ```
 
-### Step 2: Clone the Repository
+### Step 2: Download the Script
 
-Clone the repository from GitHub:
+#### Windows
+
+1. Open your web browser.
+2. Navigate to the [GitHub repository](https://github.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-).
+3. Click on the `hcmt.py` file.
+4. Click on the "Raw" button to view the raw file.
+5. Right-click on the page and select "Save As" or "Save Page As".
+6. Save the file as `hcmt.py` in your desired location, such as the `C:\Users\YourUsername\Downloads\` directory.
+
+#### macOS
+
+1. Open your web browser.
+2. Navigate to the [GitHub repository](https://github.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-).
+3. Click on the `hcmt.py` file.
+4. Click on the "Raw" button to view the raw file.
+5. Right-click on the page and select "Download Linked File As".
+6. Save the file as `hcmt.py` in your desired location, such as the `Downloads` folder.
+
+#### Linux
+
+1. Open your web browser.
+2. Navigate to the [GitHub repository](https://github.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-).
+3. Click on the `hcmt.py` file.
+4. Click on the "Raw" button to view the raw file.
+5. Right-click on the page and select "Save Link As".
+6. Save the file as `hcmt.py` in your desired location, such as the `~/Downloads` directory.
+
+Alternatively, you can use the terminal to download the file:
 
 ```sh
-git clone https://github.com/yourusername/hetzner-cloud-management-tool.git
-cd hetzner-cloud-management-tool
-```
+wget https://raw.githubusercontent.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/main/hcmt.py -O ~/Downloads/hcmt.py
+
 
 ### Step 3: Run the Script
 
