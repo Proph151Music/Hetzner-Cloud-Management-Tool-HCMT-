@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Hetzner Cloud Management Tool (HCMT) is a powerful and efficient script designed to manage various operations in Hetzner Cloud. It provides functionalities such as setting up firewalls, creating SSH key pairs, and managing cloud servers. This tool is particularly useful for developers and system administrators who want to streamline their Hetzner Cloud management tasks through an easy-to-use command-line interface.
+The Hetzner Cloud Management Tool (HCMT) is a powerful script designed to manage various operations in Hetzner Cloud. It streamlines tasks such as setting up firewalls, creating SSH key pairs, and managing cloud servers through an easy-to-use command-line interface.
 
 ## Features
 
@@ -22,14 +22,20 @@ The Hetzner Cloud Management Tool (HCMT) is a powerful and efficient script desi
 
 #### Windows
 
-1. Visit the [Python downloads page](https://www.python.org/downloads/).
-2. Download the installer for the latest version of Python.
-3. Run the installer and follow the instructions. Make sure to check the box that says "Add Python to PATH".
+1. Open your web browser.
+2. Navigate to the [GitHub repository](https://github.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-).
+3. Click on the `install_python.bat` file.
+4. Click on the "Raw" button to view the raw file.
+5. Right-click on the page and select "Save As" or "Save Page As".
+6. Save the file as `install_python.bat` in your desired location, such as the `C:\Users\YourUsername\Downloads\` directory.
+7. Browse to the location you downloaded the file and right click on it to choose run as Administrator.
+
+This will check if you have Python and PUP installed.  If not it will ask if you want the script to download and set it up for you automatically.
 
 #### macOS
 
 1. Open Terminal.
-2. Install Homebrew if you haven't already:
+2. Install Homebrew if not already installed:
 
     ```sh
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
@@ -53,57 +59,34 @@ The Hetzner Cloud Management Tool (HCMT) is a powerful and efficient script desi
         sudo apt-get install python3
         ```
 
-    - **Fedora:**
-
-        ```sh
-        sudo dnf install python3
-        ```
-
-    - **Arch Linux:**
-
-        ```sh
-        sudo pacman -S python
-        ```
-
 ### Step 2: Download the Script
 
 #### Windows
 
-1. Open your web browser.
-2. Navigate to the [GitHub repository](https://github.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-).
-3. Click on the `hcmt.py` file.
-4. Click on the "Raw" button to view the raw file.
-5. Right-click on the page and select "Save As" or "Save Page As".
-6. Save the file as `hcmt.py` in your desired location, such as the `C:\Users\YourUsername\Downloads\` directory.
+1. Download the `hcmt.py` file from the [GitHub repository](https://github.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-).
+   - Click on the file, then click "Raw", and save the file as `hcmt.py`.
+2. Open Command Prompt and navigate to the directory where `hcmt.py` is saved.
+3. Run the script by typing this command in the CMD window:
 
-### Ensure Python is in PATH (Windows Only)
-If Python is installed but not recognized in Command Prompt, run the following PowerShell command to add Python to your PATH. Open PowerShell as an administrator and run:
+    ```sh
+    python hcmt.py
+    ```
 
-```$pythonPath = (Get-Command python).Path; $pythonDir = Split-Path $pythonPath; $env:Path += ";$pythonDir;$pythonDir\Scripts"; [Environment]::SetEnvironmentVariable("Path", $env:Path, [System.EnvironmentVariableTarget]::Machine)```
+#### macOS and Linux
 
-#### macOS
+1. Download the `hcmt.py` file using a web browser or terminal:
 
-1. Open your web browser.
-2. Navigate to the [GitHub repository](https://github.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-).
-3. Click on the `hcmt.py` file.
-4. Click on the "Raw" button to view the raw file.
-5. Right-click on the page and select "Download Linked File As".
-6. Save the file as `hcmt.py` in your desired location, such as the `Downloads` folder.
+    ```sh
+    wget https://raw.githubusercontent.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/main/hcmt.py -O ~/Downloads/hcmt.py
+    ```
 
-#### Linux
+2. Open Terminal and navigate to the directory where `hcmt.py` is saved.
+3. Run the script:
 
-1. Open your web browser.
-2. Navigate to the [GitHub repository](https://github.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-).
-3. Click on the `hcmt.py` file.
-4. Click on the "Raw" button to view the raw file.
-5. Right-click on the page and select "Save Link As".
-6. Save the file as `hcmt.py` in your desired location, such as the `~/Downloads` directory.
-
-Alternatively, you can use the terminal to download the file:
-
-```wget https://raw.githubusercontent.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/main/hcmt.py -O ~/Downloads/hcmt.py```
-
-
+    ```sh
+    python3 ~/Downloads/hcmt.py
+    ```
+    
 ### Step 3: Run the Script
 
 The script automatically installs the required packages (`requests`, `colorama`, `paramiko`). Simply run the script, and it will take care of the rest.
@@ -114,11 +97,20 @@ python hcmt.py
 
 ## Usage
 
+## Creating a Hetzner API Key
+
+1. Log in to your Hetzner Cloud account.
+2. Navigate to the "API Tokens" section. (It is inside the Security section.)
+3. Click "Generate API Token". Provide any name for the token and choose Read and Write.
+4. Copy the generated API key and use it when prompted by the script.
+
+Follow the on-screen instructions to perform your desired operations.
+
 When you run the script, you will be presented with a menu to choose from various options:
 
 1. **Setup Firewall:** Create or update a firewall with specific rules.
 2. **Create SSH Key Pair:** Generate and upload an SSH key pair to Hetzner Cloud.
-3. **Create Cloud Server:** Create a new cloud server with the specified configurations.
+3. **Create Cloud Server:** Create a new cloud server with the specified configurations. This is where I recommend everyone start. It will walk you through all steps.
 4. **Exit:** Exit the tool.
 
 Follow the on-screen instructions to perform your desired operations.
