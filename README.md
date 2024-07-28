@@ -22,17 +22,13 @@ The Hetzner Cloud Management Tool (HCMT) is a powerful script designed to manage
 
 #### Windows
 
-1. Open your web browser.
-2. Navigate to the [GitHub repository](https://github.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-).
-3. Click on the `install_python.bat` file.
-4. Click on the "Raw" button to view the raw file.
-5. Right-click on the page and select "Save As" or "Save Page As".
-6. Save the file as `install_python.bat` in your desired location, such as the `C:\Users\YourUsername\Downloads\` directory.
-7. Browse to the location you downloaded the file and right click on it to choose run as Administrator.
+1. Right click on the [install_python.bat](https://raw.githubusercontent.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/main/install_python.bat) file and select "Save As".
+2. Save the file as "install_python.bat" in your desired location, such as the "C:\Users\YourUsername\Downloads" directory.
+3. Browse to the location you downloaded the file and right click on it to choose "Run as Administrator".
 
 This will check if you have Python and PUP installed.  If not it will ask if you want the script to download and set it up for you automatically.
 
-To make things even easier, when the script detects that you already have python and pup installed properly, it will ask if you'd like to launch the hcmt.py file for you. You can esentually skip Step 2 if you use this method.
+To make things even easier, when the script detects that you already have python and pup installed properly, it will ask if you'd like to launch the hcmt.py file. You can essentially skip Step 2, if you use this method.
 
 #### macOS
 
@@ -65,9 +61,8 @@ To make things even easier, when the script detects that you already have python
 
 #### Windows
 
-1. Download the `hcmt.py` file from the [GitHub repository](https://github.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-).
-   - Click on the file, then click "Raw", and save the file as `hcmt.py`.
-2. Open Command Prompt and navigate to the directory where `hcmt.py` is saved.
+1. Download the [hcmt.py](https://github.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/raw/main/hcmt.py) file.
+2. Open a Command Prompt with administrative permissions and navigate to the directory where "hcmt.py" is saved.
 3. Run the script by typing this command in the CMD window:
 
     ```sh
@@ -76,7 +71,7 @@ To make things even easier, when the script detects that you already have python
 
 #### macOS and Linux
 
-1. Download the `hcmt.py` file using a web browser or terminal:
+1. Download the [hcmt.py](https://github.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/raw/main/hcmt.py) file using a web browser or terminal:
 
     ```sh
     wget https://raw.githubusercontent.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/main/hcmt.py -O ~/Downloads/hcmt.py
@@ -104,10 +99,10 @@ Follow the on-screen instructions to perform your desired operations.
 
 When you run the script, you will be presented with a menu to choose from various options:
 
-1. **Setup Firewall:** Create or update a firewall with specific rules.
-2. **Create SSH Key Pair:** Generate and upload an SSH key pair to Hetzner Cloud.
-3. **Create Cloud Server:** Create a new cloud server with the specified configurations. This is where I recommend everyone start. It will walk you through all steps.
-4. **Exit:** Exit the tool.
+F) **Setup Firewall:** Create or update a firewall with specific rules.
+S) **Create SSH Key Pair:** Generate and upload an SSH key pair to Hetzner Cloud.
+C) **Create Cloud Server:** (Recommended) Create a new cloud server with the specified configurations. This is where I recommend everyone start. It will walk you through all steps.
+X) **Exit:** Exit the tool.
 
 Follow the on-screen instructions to perform your desired operations.
 
@@ -128,6 +123,13 @@ In debug mode, all operations are logged to `hetzner_debug.log`.
 ## Contributing
 
 If you would like to contribute to the development of HCMT, please fork the repository and submit a pull request. We welcome all contributions and improvements.
+
+## Acknowledgments
+This script was written by @Proph151Music for the Constellation Network ecosystem. 
+Don't forget to tip the bar tender! 
+
+**DAG Wallet Address for sending tips:**
+`DAG0Zyq8XPnDKRB3wZaFcFHjL4seCLSDtHbUcYq3`
 
 ## License
 
