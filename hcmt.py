@@ -549,11 +549,22 @@ def check_server_name_availability(server_name):
 def get_api_key():
     global api_key
     if api_key is None:
+        print(Fore.LIGHTWHITE_EX + "This script was written by " + Fore.CYAN + "@Proph151Music" + Fore.LIGHTWHITE_EX + " for the Constellation Network ecosystem." + Style.RESET_ALL)
+        print("")
+        print("Don't forget to tip the bar tender!"+ Style.RESET_ALL)
+        print("----> " + Fore.YELLOW + "DAG0Zyq8XPnDKRB3wZaFcFHjL4seCLSDtHbUcYq3" + Style.RESET_ALL)
+        print("")
+        print(Fore.LIGHTGREEN_EX + "Receive a €20 credit in your Hetzner account by using this unique promo link when you sign up:" + Style.RESET_ALL)
+        print(Fore.LIGHTCYAN_EX + "https://hetzner.cloud/?ref=2tjBU33OPhv6" + Style.RESET_ALL)
+        print("")
+        print("")
+        print("-===[ HETZNER API KEY ]===-")
+        print("")
         print("To create a Hetzner Cloud API token, follow these steps:")
         print(Fore.CYAN + "1. Log in to your Hetzner Cloud account.")
         print('2. Navigate to the "API Tokens" section. (It is inside the Security section.)')
         print('3. Click "Generate API Token". Provide any name for the token and choose Read and Write.')
-        print("4. Copy the generated API key and paste it here." + Style.RESET_ALL)
+        print("4. Copy the generated API key and paste it below." + Style.RESET_ALL)
         print("")
         api_key = input("Enter your Hetzner API Key: ")
     return api_key
@@ -563,8 +574,6 @@ def main_menu():
     logging.debug("Entered main_menu function")
     global api_key
     clear_screen()
-    print("")
-    print(f"-===[ HETZNER API KEY ]===-")
     print("")
     get_api_key()
 
