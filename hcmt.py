@@ -13,25 +13,20 @@ else:
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
 logging.debug("Starting Hetzner Cloud Management Tool")
 
+# Check if running in a frozen state (compiled)
+is_frozen = getattr(sys, 'frozen', False)
+
 if DEBUG_MODE and not is_frozen:
     # Redirect stdout and stderr to log file in debug mode and when not compiled
     sys.stdout = open('hetzner_debug.log', 'a')
     sys.stderr = open('hetzner_debug.log', 'a')
-
-# Check if running in a frozen state (compiled)
-is_frozen = getattr(sys, 'frozen', False)
-if is_frozen:
-    logging.debug("Running in frozen mode (compiled as executable)")
 else:
     logging.debug("Running in script mode (not compiled)")
-    if DEBUG_MODE:
-        # Redirect stdout and stderr to log file in debug mode and when not compiled
-        sys.stdout = open('hetzner_debug.log', 'a')
-        sys.stderr = open('hetzner_debug.log', 'a')
 
 # Initialize global variables
 api_key = None
 winscp_path = None
+
 
 def install_python():
     logging.debug("Entered install_python function")
@@ -113,12 +108,6 @@ import paramiko
 logging.debug("Imported paramiko")
 from colorama import Fore, Style
 logging.debug("Imported colorama")
-
-def get_api_key():
-    global api_key
-    if api_key is None:
-        api_key = input("Enter your Hetzner API Key: ")
-    return api_key
 
 def make_api_call(url, headers):
     """Utility function to make API calls and handle failures."""
@@ -557,6 +546,18 @@ def check_server_name_availability(server_name):
         print("Failed to fetch server list:", response.text)
         return False  # Assume not available if the API call fails
 
+def get_api_key():
+    global api_key
+    if api_key is None:
+        print("To create a Hetzner Cloud API token, follow these steps:")
+        print(Fore.CYAN + "1. Log in to your Hetzner Cloud account.")
+        print('2. Navigate to the "API Tokens" section. (It is inside the Security section.)')
+        print('3. Click "Generate API Token". Provide any name for the token and choose Read and Write.')
+        print("4. Copy the generated API key and paste it here." + Style.RESET_ALL)
+        print("")
+        api_key = input("Enter your Hetzner API Key: ")
+    return api_key
+
 # Main interaction and menu
 def main_menu():
     logging.debug("Entered main_menu function")
@@ -565,9 +566,7 @@ def main_menu():
     print("")
     print(f"-===[ HETZNER API KEY ]===-")
     print("")
-    if not api_key:
-        api_key = input("Enter your Hetzner API Key: ")
-        logging.debug(f"API Key entered: {api_key}")
+    get_api_key()
 
     clear_screen()
     print("")
