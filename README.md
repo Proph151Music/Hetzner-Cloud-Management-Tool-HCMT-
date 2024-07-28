@@ -32,6 +32,8 @@ The Hetzner Cloud Management Tool (HCMT) is a powerful script designed to manage
 
 This will check if you have Python and PUP installed.  If not it will ask if you want the script to download and set it up for you automatically.
 
+To make things even easier, when the script detects that you already have python and pup installed properly, it will ask if you'd like to launch the hcmt.py file for you. You can esentually skip Step 2 if you use this method.
+
 #### macOS
 
 1. Open Terminal.
@@ -87,15 +89,9 @@ This will check if you have Python and PUP installed.  If not it will ask if you
     python3 ~/Downloads/hcmt.py
     ```
     
-### Step 3: Run the Script
+## Usage
 
 The script automatically installs the required packages (`requests`, `colorama`, `paramiko`). Simply run the script, and it will take care of the rest.
-
-```sh
-python hcmt.py
-```
-
-## Usage
 
 ## Creating a Hetzner API Key
 
