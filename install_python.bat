@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 set SCRIPT_DIR=%~dp0
-set LOGFILE=%SCRIPT_DIR%install_python_log.txt
+set LOGFILE=%SCRIPT_DIR%/install_python_log.txt
 
 REM Set the current directory to the directory of the batch file
 cd /d %~dp0
