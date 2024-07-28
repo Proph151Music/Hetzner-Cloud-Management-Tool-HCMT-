@@ -27,6 +27,31 @@ else:
 api_key = None
 winscp_path = None
 
+def setup_virtual_environment():
+    logging.debug("Entered setup_virtual_environment function")
+    venv_path = os.path.join(os.getcwd(), "hetzner_venv")
+    if not os.path.exists(venv_path):
+        logging.info("Creating virtual environment...")
+        subprocess.check_call([sys.executable, "-m", "venv", venv_path])
+        logging.info("Virtual environment created.")
+    else:
+        logging.info("Virtual environment already exists.")
+
+    activate_script = os.path.join(venv_path, "bin", "activate_this.py")
+    exec(open(activate_script).read(), {'__file__': activate_script})
+    logging.info("Virtual environment activated.")
+
+def install_required_packages():
+    logging.debug("Entered install_required_packages function")
+    required_packages = ["requests", "colorama", "paramiko"]
+    for package in required_packages:
+        try:
+            __import__(package)
+            logging.debug(f"Package '{package}' is already installed.")
+        except ImportError:
+            logging.info(f"Installing package '{package}'...")
+            subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+            logging.info(f"Package '{package}' installed.")
 
 def install_python():
     logging.debug("Entered install_python function")
@@ -558,11 +583,14 @@ def get_api_key():
         print(Fore.LIGHTCYAN_EX + "https://hetzner.cloud/?ref=2tjBU33OPhv6" + Style.RESET_ALL)
         print("")
         print("")
-        print("-===[ HETZNER API KEY ]===-")
+        print(f"-===[ HETZNER API KEY ]===-")
         print("")
         print("To create a Hetzner Cloud API token, follow these steps:")
         print(Fore.CYAN + "1. Log in to your Hetzner Cloud account.")
         print('2. Navigate to the "API Tokens" section. (It is inside the Security section.)')
+        print("   https://console.hetzner.cloud/projects")
+        print("   You may need to create a New Project. Then go into the project.")
+        print("   Once inside the project click on Security at the bottom left. Then API tokens.")
         print('3. Click "Generate API Token". Provide any name for the token and choose Read and Write.')
         print("4. Copy the generated API key and paste it below." + Style.RESET_ALL)
         print("")
@@ -608,7 +636,14 @@ def main_menu():
             logging.debug("User selected to create cloud server")
             # Server Name
             print("")
+            print("Don't forget to tip the bar tender!"+ Style.RESET_ALL)
+            print("----> " + Fore.YELLOW + "DAG0Zyq8XPnDKRB3wZaFcFHjL4seCLSDtHbUcYq3" + Style.RESET_ALL)
+            print("")
             print(f"-===[ SERVER NAME ]===-")
+            print("")
+            print(Fore.CYAN + "A valid server name must be a non-empty string, ")
+            print("contain only alphanumeric characters and hyphens, not start or end with a hyphen, ")
+            print("and each label (separated by dots) must not exceed 63 characters." + Style.RESET_ALL)
             print("")
             while True:
                 server_name = input("Enter the server name: ")
@@ -618,7 +653,7 @@ def main_menu():
                     else:
                         print(f"Server name '{server_name}' is already used. Please choose a different name.")
                 else:
-                    print("Invalid server name. A valid hostname must be a non-empty string, ")
+                    print(Fore.LIGHTRED_EX + "Invalid server name. A valid server name must be a non-empty string, ")
                     print("contain only alphanumeric characters and hyphens, not start or end with a hyphen, ")
                     print("and each label (separated by dots) must not exceed 63 characters.")
             logging.debug(f"Server name: {server_name}")
@@ -627,6 +662,10 @@ def main_menu():
             print("")
             print(f"-===[ SERVER OPERATING SYSTEM ]===-")
             print("")
+            print(Fore.CYAN + "Ubuntu-22.04 is the recommended OS. ")
+            print("By default You can just press ENTER to choose it.")
+            print("Or you are welcome to type a different OS if instructions have changed." + Style.RESET_ALL)
+            print("")
             image = input("Enter the image you want to use \n"
                           f"  [default: ubuntu-22.04]: ") or "ubuntu-22.04"
             logging.debug(f"Server OS image: {image}")
@@ -634,6 +673,10 @@ def main_menu():
             # Server location
             print("")
             print(f"-===[ SERVER LOCATION ]===-")
+            print("")
+            print(Fore.CYAN + "Here you can select the location where your server will reside.")
+            print("By default You can just press ENTER to choose Ashburn, Virgina (ash).")
+            print("Or you can type a different location code that you see highlighted in the list below." + Style.RESET_ALL)
             print("")
             locations = fetch_and_display_locations()
             logging.debug(f"Locations fetched: {locations}")
@@ -766,6 +809,12 @@ def main_menu():
 if __name__ == "__main__":
     try:
         logging.debug("Program started")
+        if sys.platform == 'darwin':
+            setup_virtual_environment()
+            install_required_packages()
+        else:
+            for package in required_packages:
+                install_and_reload(package)
         main_menu()
     except Exception as e:
         logging.error(f"An error occurred: {e}", exc_info=True)
