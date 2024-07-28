@@ -3,6 +3,9 @@ setlocal enabledelayedexpansion
 
 set LOGFILE=c:\hetzner\install_python_log.txt
 
+REM Set the current directory to the directory of the batch file
+cd /d %~dp0
+
 echo Log file location: %LOGFILE% > %LOGFILE%
 echo Starting script... >> %LOGFILE%
 echo Starting script...
@@ -33,24 +36,27 @@ if "%PYTHON_ERRORLEVEL%"=="0" (
         echo pip found. >> %LOGFILE%
         echo pip is installed. >> %LOGFILE%
         echo pip is installed.
+
+        @REM REM Prompt for uninstallation
+        @REM echo User prompt for uninstallation... >> %LOGFILE%
+        @REM set /p uninstall="Do you want to uninstall Python and pip? (y/n): "
+        @REM echo User chose to !uninstall! >> %LOGFILE%
+        @REM if /i "!uninstall!"=="y" (
+        @REM     echo Uninstalling selected by user... >> %LOGFILE%
+        @REM     goto :uninstall_python
+        @REM ) else (
+        @REM     echo Exiting... >> %LOGFILE%
+        @REM     echo Exiting...
+        @REM     exit /b
+        @REM )
+
+        REM Call function to check and run HCMT
+        call :check_and_run_hcmt
     ) else (
         echo pip not found. >> %LOGFILE%
         echo pip is not installed. >> %LOGFILE%
         echo pip is not installed.
     )
-    
-    @REM REM Prompt for uninstallation
-    @REM echo User prompt for uninstallation... >> %LOGFILE%
-    @REM set /p uninstall="Do you want to uninstall Python and pip? (y/n): "
-    @REM echo User chose to !uninstall! >> %LOGFILE%
-    @REM if /i "!uninstall!"=="y" (
-    @REM     echo Uninstalling selected by user... >> %LOGFILE%
-    @REM     goto :uninstall_python
-    @REM ) else (
-    @REM     echo Exiting... >> %LOGFILE%
-    @REM     echo Exiting...
-    @REM     exit /b
-    @REM )
 ) else (
     echo Python not found in PATH, searching all possible locations... >> %LOGFILE%
     echo Python not found in PATH, searching all possible locations...
@@ -107,6 +113,29 @@ if "%CHECK_PYTHON_ERRORLEVEL%"=="0" (
     echo Python was not found even after adding to PATH.
     exit /b
 )
+
+REM Function to check and run HCMT
+:check_and_run_hcmt
+echo.
+set /p run_hcmt="Do you want to run the Hetzner Cloud Management Tool (HCMT)? (y/n): "
+if /i "!run_hcmt!"=="y" (
+    if not exist "hcmt.py" (
+        echo hcmt.py not found in the current directory. Downloading hcmt.py... >> %LOGFILE%
+        powershell -Command "Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/main/hcmt.py' -OutFile 'hcmt.py'" >> %LOGFILE% 2>>&1
+        if exist "hcmt.py" (
+            echo hcmt.py downloaded successfully. >> %LOGFILE%
+        ) else (
+            echo Failed to download hcmt.py. >> %LOGFILE%
+            goto end
+        )
+    )
+    REM Log the directory from where hcmt.py is being launched
+    echo Launching hcmt.py from directory: %cd% >> %LOGFILE%
+    echo Running hcmt.py... >> %LOGFILE%
+    start "" python hcmt.py
+    exit
+)
+goto :eof
 
 REM Function to uninstall Python
 :uninstall_python
@@ -234,12 +263,6 @@ echo New PATH: !newPath! >> %LOGFILE%
 REM Update the system PATH
 powershell -command "[System.Environment]::SetEnvironmentVariable('Path', '%newPath%', [System.EnvironmentVariableTarget]::Machine)" >> %LOGFILE% 2>>&1
 
-REM Verify the installation
-echo Verifying Python installation... >> %LOGFILE%
-python --version >> %LOGFILE% 2>>&1
-echo Verifying pip installation... >> %LOGFILE%
-pip --version >> %LOGFILE% 2>>&1
-
 REM Ensure pip is included in the PATH
 set "scriptDir=%pythonDir%\Scripts"
 if not exist "%scriptDir%\pip.exe" (
@@ -249,9 +272,23 @@ if not exist "%scriptDir%\pip.exe" (
 )
 set "newPath=!newPath!;%scriptDir%"
 
+REM Verify the installation
+echo Verifying Python installation... >> %LOGFILE%
+python --version >> %LOGFILE% 2>>&1
+set PYTHON_ERRORLEVEL=%errorlevel%
+echo Verifying pip installation... >> %LOGFILE%
+pip --version >> %LOGFILE% 2>>&1
+set PIP_ERRORLEVEL=%errorlevel%
+
 REM Clean up
 del /f "!pythonInstallerPath!" >> %LOGFILE%
 del /f "%PS_SCRIPT%" >> %LOGFILE%
+
+REM Check if Python and pip were verified successfully
+if "!PYTHON_ERRORLEVEL!"=="0" if "!PIP_ERRORLEVEL!"=="0" (
+    REM Call function to check and run HCMT
+    call :check_and_run_hcmt
+)
 
 :end
 echo Script ended. >> %LOGFILE%
