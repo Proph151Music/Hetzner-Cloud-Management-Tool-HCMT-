@@ -30,7 +30,7 @@ else:
     logging.debug("Running in script mode (not compiled)")
 
 # Version of the script
-version = "0.1.7.1"
+version = "0.1.7.2"
 
 # Initialize global variables
 api_key = None
@@ -644,12 +644,14 @@ def check_for_updates():
                 if update == 'y':
                     response = requests.get("https://raw.githubusercontent.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/main/hcmt.py")
                     if response.status_code == 200:
-                        new_script_path = os.path.join(os.path.dirname(__file__), 'hcmt_new.py')
+                        script_path = os.path.realpath(__file__)
+                        new_script_path = script_path + '.new'
+                        
                         with open(new_script_path, 'w') as f:
                             f.write(response.text)
                         
                         if calculate_hash(new_script_path) == latest_hash:
-                            os.replace(new_script_path, __file__)
+                            os.replace(new_script_path, script_path)
                             print("Update successful. Restarting script...")
                             os.execv(sys.executable, ['python'] + sys.argv + ['--no-update'])
                         else:
