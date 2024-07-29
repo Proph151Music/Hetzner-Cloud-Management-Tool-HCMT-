@@ -7,6 +7,9 @@ import hashlib
 import warnings
 from cryptography.utils import CryptographyDeprecationWarning
 
+# Version of the script
+version = "0.1.7.7"
+
 # Suppress specific deprecation warnings
 warnings.filterwarnings("ignore", category=CryptographyDeprecationWarning)
 
@@ -37,9 +40,6 @@ logger.debug("Starting Hetzner Cloud Management Tool")
 
 # Check if running in a frozen state (compiled)
 is_frozen = getattr(sys, 'frozen', False)
-
-# Version of the script
-version = "0.1.7.6"
 
 # Initialize global variables
 api_key = None
@@ -739,7 +739,7 @@ def check_for_updates():
                             logger.debug("Updater script created")
                             print("Update downloaded. Running updater...")
                             try:
-                                os.execv(sys.executable, ['python', 'updater.py', script_path, new_script_path])
+                                os.execv(sys.executable, ['python', 'updater.py', script_path, new_script_path, '--no-update'])
                             except Exception as e:
                                 logger.error(f"Failed to execute updater script: {e}")
                         else:
@@ -987,7 +987,7 @@ if __name__ == "__main__":
     if '--no-update' not in sys.argv:
         check_for_updates()
     try:
-        logging.debug("Program started")
+        logger.debug("Program started")
         if sys.platform == 'darwin':
             setup_virtual_environment()
             install_required_packages()
@@ -996,6 +996,6 @@ if __name__ == "__main__":
                 install_and_reload(package)
         main_menu()
     except Exception as e:
-        logging.error(f"An error occurred: {e}", exc_info=True)
+        logger.error(f"An error occurred: {e}", exc_info=True)
         print(f"An error occurred: {e}")
         input("Press Enter to exit...")
