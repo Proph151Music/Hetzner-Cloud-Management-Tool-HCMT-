@@ -13,24 +13,33 @@ warnings.filterwarnings("ignore", category=CryptographyDeprecationWarning)
 DEBUG_MODE = False
 
 # Set up logging
-if DEBUG_MODE:
-    logging.basicConfig(filename='hetzner_debug.log', level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s')
-else:
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
-logging.debug("Starting Hetzner Cloud Management Tool")
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG if DEBUG_MODE else logging.INFO)
+
+console_handler = logging.StreamHandler(sys.stdout)
+console_handler.setLevel(logging.DEBUG if DEBUG_MODE else logging.INFO)
+console_formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
+console_handler.setFormatter(console_formatter)
+
+file_handler = logging.FileHandler('hetzner_debug.log')
+file_handler.setLevel(logging.DEBUG)
+file_formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
+file_handler.setFormatter(file_formatter)
+
+# Remove existing handlers if any to avoid duplicate logging
+if logger.hasHandlers():
+    logger.handlers.clear()
+
+logger.addHandler(console_handler)
+logger.addHandler(file_handler)
+
+logger.debug("Starting Hetzner Cloud Management Tool")
 
 # Check if running in a frozen state (compiled)
 is_frozen = getattr(sys, 'frozen', False)
 
-if DEBUG_MODE and not is_frozen:
-    # Redirect stdout and stderr to log file in debug mode and when not compiled
-    sys.stdout = open('hetzner_debug.log', 'a')
-    sys.stderr = open('hetzner_debug.log', 'a')
-else:
-    logging.debug("Running in script mode (not compiled)")
-
 # Version of the script
-version = "0.1.7.4"
+version = "0.1.7.5"
 
 # Initialize global variables
 api_key = None
@@ -41,6 +50,7 @@ def calculate_hash(file_path):
     hasher = hashlib.sha256()
     with open(file_path, 'rb') as f:
         buf = f.read()
+        buf = buf.replace(b'\r\n', b'\n')
         hasher.update(buf)
     return hasher.hexdigest()
 
@@ -50,33 +60,57 @@ import os
 import sys
 import shutil
 import time
+import logging
+
+# Set up logging
+logging.basicConfig(filename='updater.log', level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s')
 
 def main(script_path, new_script_path):
+    logging.debug("Updater script started")
+
     # Give some time to ensure the main script has exited
     time.sleep(1)
-    
-    # Replace the old script with the new script
-    try:
-        shutil.move(new_script_path, script_path)
-        print("Update successful. Restarting script...")
-        # Restart the script
-        os.execv(sys.executable, ['python'] + [script_path] + sys.argv[1:])
-    except Exception as e:
-        print(f"Failed to update the script: {e}")
-        sys.exit(1)
+
+    retries = 6  # Retry every 10 seconds up to 1 minute
+    while retries > 0:
+        try:
+            if os.path.exists(script_path):
+                os.remove(script_path)
+                logging.debug(f"Removed old script: {script_path}")
+            shutil.move(new_script_path, script_path)
+            logging.debug(f"Moved new script to: {script_path}")
+            print("Update successful. Restarting script...")
+            logging.debug("Update successful. Restarting script...")
+            # Restart the script
+            os.execv(sys.executable, ['python', script_path] + sys.argv[1:])
+        except Exception as e:
+            logging.error(f"Failed to update the script: {e}")
+            print(f"Failed to update the script: {e}")
+            retries -= 1
+            if retries > 0:
+                print("Retrying in 10 seconds...")
+                logging.debug("Retrying in 10 seconds...")
+                time.sleep(10)
+            else:
+                print("Max retries reached. Exiting updater.")
+                logging.debug("Max retries reached. Exiting updater.")
+                sys.exit(1)
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         print("Usage: updater.py <script_path> <new_script_path>")
+        logging.error("Invalid usage. Exiting.")
         sys.exit(1)
-    
+
     script_path = sys.argv[1]
     new_script_path = sys.argv[2]
-    
+
     main(script_path, new_script_path)
 '''
     with open('updater.py', 'w') as f:
         f.write(updater_script_content)
+    logger.debug("Updater script written to disk")
+    print("Updater script created")
 
 def setup_virtual_environment():
     logging.debug("Entered setup_virtual_environment function")
@@ -660,7 +694,7 @@ def get_api_key():
     return api_key
 
 def check_for_updates():
-    logging.debug("Checking for updates")
+    logger.debug("Checking for updates")
     current_hash = calculate_hash(__file__)
     print(f"Current version: {version}")
     print(f"Current hash: {current_hash}")
@@ -684,18 +718,31 @@ def check_for_updates():
                         with open(new_script_path, 'w') as f:
                             f.write(response.text)
                         
-                        if calculate_hash(new_script_path) == latest_hash:
+                        logger.debug(f"New script downloaded: {new_script_path}")
+                        downloaded_hash = calculate_hash(new_script_path)
+                        logging.debug(f"Expected hash: {latest_hash}")
+                        logging.debug(f"Downloaded hash: {downloaded_hash}")
+                        
+                        if downloaded_hash == latest_hash:
                             create_updater_script()
+                            logger.debug("Updater script created")
                             print("Update downloaded. Running updater...")
-                            os.execv(sys.executable, ['python', 'updater.py', script_path, new_script_path])
+                            try:
+                                os.execv(sys.executable, ['python', 'updater.py', script_path, new_script_path])
+                            except Exception as e:
+                                logger.error(f"Failed to execute updater script: {e}")
                         else:
                             print("Hash mismatch after download. Update aborted.")
+                            logger.error("Hash mismatch after download. Update aborted.")
                     else:
                         print("Failed to download the latest version.")
+                        logger.error("Failed to download the latest version.")
             else:
                 print("You already have the latest version.")
+                logger.debug("You already have the latest version.")
         else:
             print("Failed to check for updates.")
+            logger.error("Failed to check for updates.")
 
 # Main interaction and menu
 def main_menu():
