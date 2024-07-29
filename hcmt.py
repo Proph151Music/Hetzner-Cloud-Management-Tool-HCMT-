@@ -384,6 +384,10 @@ def create_or_update_firewall(firewall_name, inbound_ports):
 
     # Determine source IPs
     print("")
+    print(Fore.CYAN + "Adding this extra security to your firewall is recommended.")
+    print("If you choose yes, the script will detect you modem IP and place it in the firewall.")
+    print("This will cause the firewall to deny access to your server from anyone outside of your home network." + Style.RESET_ALL)
+    print("")
     restrict_ssh = input("Do you want to add extra security by limiting SSH access to specific IP addresses? (y/n) \n"
                         f"  [default: y]: ").strip().lower() or 'y'
     if restrict_ssh == 'y':
@@ -642,8 +646,7 @@ def main_menu():
             print(f"-===[ SERVER NAME ]===-")
             print("")
             print(Fore.CYAN + "A valid server name must be a non-empty string, ")
-            print("contain only alphanumeric characters and hyphens, not start or end with a hyphen, ")
-            print("and each label (separated by dots) must not exceed 63 characters." + Style.RESET_ALL)
+            print("contain only alphanumeric characters and hyphens, not start or end with a hyphen." + Style.RESET_ALL)
             print("")
             while True:
                 server_name = input("Enter the server name: ")
@@ -654,8 +657,7 @@ def main_menu():
                         print(f"Server name '{server_name}' is already used. Please choose a different name.")
                 else:
                     print(Fore.LIGHTRED_EX + "Invalid server name. A valid server name must be a non-empty string, ")
-                    print("contain only alphanumeric characters and hyphens, not start or end with a hyphen, ")
-                    print("and each label (separated by dots) must not exceed 63 characters.")
+                    print("contain only alphanumeric characters and hyphens, not start or end with a hyphen." + Style.RESET_ALL)
             logging.debug(f"Server name: {server_name}")
 
             # Server OS
@@ -706,6 +708,11 @@ def main_menu():
             print("")
             print(f"-===[ SERVER SPECS ]===-")
             print("")
+            print(Fore.CYAN + "You can either press enter to choose the default server specs shown ")
+            print("or you can type the code to select different specs.")
+            print("")
+            print("Do NOT choose any codes that have an `a` in the code. This means `ARM chip` and is not compatible at this time." + Style.RESET_ALL)
+            print("")
             server_types = fetch_and_display_server_types()
             logging.debug(f"Server types fetched: {server_types}")
             if not server_types:
@@ -729,6 +736,9 @@ def main_menu():
             print("")
             print(f"-===[ SERVER FIREWALL ]===-")
             print("")
+            print(Fore.CYAN + "You need to have a firewall setup to properly run your node.")
+            print("Select yes or no.  The default options are the best for most users." + Style.RESET_ALL)
+            print("")
             print("Do you want to create a new Firewall?")
             choice = input("    y - Create a new firewall. \n"
                            "    n - Choose an existing firewall. \n"
@@ -737,8 +747,15 @@ def main_menu():
 
             if choice == 'y':
                 print("")
+                print(Fore.CYAN + "By default the name is the same as your Server Name with -fw added to the end.")
+                print("If this name is fine, then press ENTER. Or type a new name for this firewall." + Style.RESET_ALL)
+                print("")
                 default_firewall_name = re.sub(r"[^a-zA-Z0-9]", "-", server_name.lower()) + "-fw"
                 firewall_name = input(f"Enter the firewall name \n  [default: {default_firewall_name}]: ").strip() or default_firewall_name
+                print("")
+                print(Fore.CYAN + "The ports needed for a DAG Validator node are already here in the defaults.")
+                print("If you don't need to make any changes then press ENTER. Otherwise you can ")
+                print("input different ports seperated by commas or port ranges with a dash." + Style.RESET_ALL)
                 print("")
                 inbound_ports = input("Enter the inbound ports \n"
                                       f"  [default: 9000-9001,9010-9011]: ") or '9000-9001,9010-9011'
@@ -761,6 +778,9 @@ def main_menu():
             # Server SSH key
             print("")
             print(f"-===[ SERVER SSH KEY ]===-")
+            print("")
+            print(Fore.CYAN + "You need to use an SSH key pair to secure access to your server.")
+            print("Selecting yes will allow the script to create an SSH key pair for you." + Style.RESET_ALL)
             print("")
             print("Do you want to create a new SSH Key?")
             choice = input("    y - Create a new SSH Key. \n"
@@ -793,8 +813,10 @@ def main_menu():
             print("")
             print(f"-===[ SERVER CREATION ]===-")
             print("")
+            print(Fore.CYAN + "Make sure you document all of the server configuration that is shown after the server creation is completed!")
+            print("You will need these details to properly connect to your server." + Style.RESET_ALL)
+            print("")
             create_server(server_name, server_type_id, image, location, firewall_id, ssh_key_name)
-
             print("")
             pause_and_return()
         elif choice == 'X':
