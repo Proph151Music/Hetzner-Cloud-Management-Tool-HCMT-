@@ -8,12 +8,12 @@ import warnings
 from cryptography.utils import CryptographyDeprecationWarning
 
 # Version of the script
-version = "0.1.7.7"
+version = "0.1.7.8"
 
 # Suppress specific deprecation warnings
 warnings.filterwarnings("ignore", category=CryptographyDeprecationWarning)
 
-DEBUG_MODE = False
+DEBUG_MODE = True
 
 # Set up logging
 logger = logging.getLogger()
@@ -78,12 +78,12 @@ import logging
 # Set up logging
 logging.basicConfig(filename='updater.log', level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s')
 
-def main(script_path, new_script_path):
-    logging.debug("Updater script started")
-
+def main(script_path, new_script_path, *args):
+    logging.debug("Updater script started with arguments: %s", sys.argv)
+    
     # Give some time to ensure the main script has exited
     time.sleep(1)
-
+    
     retries = 6  # Retry every 10 seconds up to 1 minute
     while retries > 0:
         try:
@@ -94,8 +94,8 @@ def main(script_path, new_script_path):
             logging.debug(f"Moved new script to: {script_path}")
             print("Update successful. Restarting script...")
             logging.debug("Update successful. Restarting script...")
-            # Restart the script
-            os.execv(sys.executable, ['python', script_path] + sys.argv[1:])
+            # Restart the script with '--no-update' flag and original script arguments
+            os.execv(sys.executable, [sys.executable, script_path, '--no-update'] + list(args))
         except Exception as e:
             logging.error(f"Failed to update the script: {e}")
             print(f"Failed to update the script: {e}")
@@ -110,20 +110,19 @@ def main(script_path, new_script_path):
                 sys.exit(1)
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("Usage: updater.py <script_path> <new_script_path>")
+    if len(sys.argv) < 3:
         logging.error("Invalid usage. Exiting.")
+        print("Usage: updater.py <script_path> <new_script_path> [additional args...]")
         sys.exit(1)
-
+    
     script_path = sys.argv[1]
     new_script_path = sys.argv[2]
-
-    main(script_path, new_script_path)
+    additional_args = sys.argv[3:]
+    
+    main(script_path, new_script_path, *additional_args)
 '''
     with open('updater.py', 'w') as f:
         f.write(updater_script_content)
-    logger.debug("Updater script written to disk")
-    print("Updater script created")
 
 def setup_virtual_environment():
     logging.debug("Entered setup_virtual_environment function")
@@ -984,6 +983,7 @@ def main_menu():
         input("Press Enter to exit...")
 
 if __name__ == "__main__":
+    logger.debug(f"Main script started with arguments: {sys.argv}")
     if '--no-update' not in sys.argv:
         check_for_updates()
     try:
@@ -999,3 +999,4 @@ if __name__ == "__main__":
         logger.error(f"An error occurred: {e}", exc_info=True)
         print(f"An error occurred: {e}")
         input("Press Enter to exit...")
+
