@@ -84,7 +84,7 @@ If Python is not installed then follow these instructions:
 
 1. **Download the [hcmt.py](https://github.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/raw/main/hcmt.py) file:**
 
-    Use `curl` to download the latest version of `hcmt.py` to ensure you get the most recent non-cached version. Open Terminal and run:
+    Open Terminal and Use `curl` to download the latest version of `hcmt.py` to ensure you get the most recent non-cached version. Open Terminal and run:
 
     ```sh
     curl -o hcmt.py -L -H "Cache-Control: no-cache" https://raw.githubusercontent.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/main/hcmt.py
