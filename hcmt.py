@@ -30,7 +30,7 @@ else:
     logging.debug("Running in script mode (not compiled)")
 
 # Version of the script
-version = "0.1.7.2"
+version = "0.1.7.3"
 
 # Initialize global variables
 api_key = None
@@ -601,8 +601,8 @@ def check_server_name_availability(server_name):
 def get_api_key():
     global api_key
     if api_key is None:
-        print(Fore.LIGHTCYAN_EX + "Hetzner Cloud Management Tool (HCMT) v" + version + Style.RESET_ALL)
-        print(Fore.LIGHTWHITE_EX + "This script was written by " + Fore.CYAN + "@Proph151Music" + Fore.LIGHTWHITE_EX + " for the Constellation Network ecosystem." + Style.RESET_ALL)
+        print(Fore.LIGHTWHITE_EX + "Hetzner Cloud Management Tool (HCMT) - " + version)
+        print("This script was written by " + Fore.CYAN + "@Proph151Music" + Fore.LIGHTWHITE_EX + " for the Constellation Network ecosystem." + Style.RESET_ALL)
         print("")
         print("Don't forget to tip the bar tender!"+ Style.RESET_ALL)
         print("----> " + Fore.YELLOW + "DAG0Zyq8XPnDKRB3wZaFcFHjL4seCLSDtHbUcYq3" + Style.RESET_ALL)
