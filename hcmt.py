@@ -39,7 +39,7 @@ logger.debug("Starting Hetzner Cloud Management Tool")
 is_frozen = getattr(sys, 'frozen', False)
 
 # Version of the script
-version = "0.1.7.5"
+version = "0.1.7.6"
 
 # Initialize global variables
 api_key = None
@@ -49,10 +49,23 @@ winscp_path = None
 def calculate_hash(file_path):
     hasher = hashlib.sha256()
     with open(file_path, 'rb') as f:
-        buf = f.read()
-        buf = buf.replace(b'\r\n', b'\n')
-        hasher.update(buf)
+        for chunk in iter(lambda: f.read(4096), b""):
+            hasher.update(chunk)
     return hasher.hexdigest()
+
+def download_file(url, save_path):
+    response = requests.get(url, stream=True)
+    if response.status_code == 200:
+        with open(save_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+    else:
+        logger.error(f"Failed to download file from {url}")
+        raise Exception("Download failed")
+
+def compare_files(file_path1, file_path2):
+    with open(file_path1, 'rb') as f1, open(file_path2, 'rb') as f2:
+        return f1.read() == f2.read()
 
 def create_updater_script():
     updater_script_content = '''
@@ -710,18 +723,16 @@ def check_for_updates():
             if version != latest_version or current_hash != latest_hash:
                 update = input("A new version is available. Do you want to update? (y/n): ").strip().lower()
                 if update == 'y':
-                    response = requests.get("https://raw.githubusercontent.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/main/hcmt.py")
-                    if response.status_code == 200:
-                        script_path = os.path.realpath(__file__)
-                        new_script_path = script_path + '.new'
-                        
-                        with open(new_script_path, 'w') as f:
-                            f.write(response.text)
-                        
+                    script_path = os.path.realpath(__file__)
+                    new_script_path = script_path + '.new'
+                    
+                    try:
+                        download_file("https://raw.githubusercontent.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/main/hcmt.py", new_script_path)
                         logger.debug(f"New script downloaded: {new_script_path}")
+                        
                         downloaded_hash = calculate_hash(new_script_path)
-                        logging.debug(f"Expected hash: {latest_hash}")
-                        logging.debug(f"Downloaded hash: {downloaded_hash}")
+                        logger.debug(f"Expected hash: {latest_hash}")
+                        logger.debug(f"Downloaded hash: {downloaded_hash}")
                         
                         if downloaded_hash == latest_hash:
                             create_updater_script()
@@ -734,9 +745,10 @@ def check_for_updates():
                         else:
                             print("Hash mismatch after download. Update aborted.")
                             logger.error("Hash mismatch after download. Update aborted.")
-                    else:
-                        print("Failed to download the latest version.")
-                        logger.error("Failed to download the latest version.")
+                            if not compare_files(script_path, new_script_path):
+                                logger.error("File contents do not match, potential download issue.")
+                    except Exception as e:
+                        logger.error(f"Failed to download the latest version: {e}")
             else:
                 print("You already have the latest version.")
                 logger.debug("You already have the latest version.")
