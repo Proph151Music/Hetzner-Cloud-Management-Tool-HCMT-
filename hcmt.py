@@ -3,6 +3,12 @@ import time
 import sys
 import subprocess
 import os
+import hashlib
+import warnings
+from cryptography.utils import CryptographyDeprecationWarning
+
+# Suppress specific deprecation warnings
+warnings.filterwarnings("ignore", category=CryptographyDeprecationWarning)
 
 DEBUG_MODE = False
 
@@ -23,9 +29,20 @@ if DEBUG_MODE and not is_frozen:
 else:
     logging.debug("Running in script mode (not compiled)")
 
+# Version of the script
+version = "0.1.7.0"
+
 # Initialize global variables
 api_key = None
 winscp_path = None
+
+# Function to calculate the hash of a file
+def calculate_hash(file_path):
+    hasher = hashlib.sha256()
+    with open(file_path, 'rb') as f:
+        buf = f.read()
+        hasher.update(buf)
+    return hasher.hexdigest()
 
 def setup_virtual_environment():
     logging.debug("Entered setup_virtual_environment function")
@@ -43,15 +60,19 @@ def setup_virtual_environment():
 
 def install_required_packages():
     logging.debug("Entered install_required_packages function")
-    required_packages = ["requests", "colorama", "paramiko"]
+    required_packages = ["requests", "colorama", "paramiko>=3.0.0", "cryptography>=39.0.0"]
     for package in required_packages:
         try:
-            __import__(package)
+            __import__(package.split('>=')[0])
             logging.debug(f"Package '{package}' is already installed.")
         except ImportError:
             logging.info(f"Installing package '{package}'...")
             subprocess.check_call([sys.executable, "-m", "pip", "install", package])
             logging.info(f"Package '{package}' installed.")
+        except Exception:
+            logging.info(f"Reinstalling package '{package}'...")
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", package])
+            logging.info(f"Package '{package}' reinstalled.")
 
 def install_python():
     logging.debug("Entered install_python function")
@@ -63,6 +84,7 @@ def install_python():
         subprocess.check_call([sys.executable, "--version"])
         print("Python is already installed.")
         logging.debug("Python is already installed.")
+        print("")
     except subprocess.CalledProcessError:
         if sys.platform == 'win32':
             print("Please visit https://www.python.org/downloads/ to download and install Python manually.")
@@ -95,25 +117,26 @@ def install_and_reload(package):
         logging.debug(f"Skipping install_and_reload for package {package} in frozen mode")
         return
 
+    package_name = package.split('>=')[0]
     try:
-        logging.debug(f"Attempting to import {package}")
-        __import__(package)
-        logging.debug(f"Successfully imported {package}")
+        logging.debug(f"Attempting to import {package_name}")
+        __import__(package_name)
+        logging.debug(f"Successfully imported {package_name}")
     except ImportError:
-        logging.debug(f"{package} not found, attempting to install")
+        logging.debug(f"{package_name} not found, attempting to install")
         subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-        logging.debug(f"Successfully installed {package}")
+        logging.debug(f"Successfully installed {package_name}")
     finally:
-        logging.debug(f"Reloading or importing {package}")
+        logging.debug(f"Reloading or importing {package_name}")
         import importlib
-        if package in sys.modules:
-            globals()[package] = importlib.reload(sys.modules[package])
+        if package_name in sys.modules:
+            globals()[package_name] = importlib.reload(sys.modules[package_name])
         else:
-            globals()[package] = importlib.import_module(package)
-        logging.debug(f"Successfully reloaded or imported {package}")
+            globals()[package_name] = importlib.import_module(package_name)
+        logging.debug(f"Successfully reloaded or imported {package_name}")
 
 # List of required packages
-required_packages = ["requests", "colorama", "paramiko"]
+required_packages = ["requests", "colorama", "paramiko>=3.0.0", "cryptography>=39.0.0"]
 
 # Check and install missing packages, then import or reload them
 for package in required_packages:
@@ -601,6 +624,42 @@ def get_api_key():
         api_key = input("Enter your Hetzner API Key: ")
     return api_key
 
+def check_for_updates():
+    logging.debug("Checking for updates")
+    current_hash = calculate_hash(__file__)
+    print(f"Current version: {version}")
+    print(f"Current hash: {current_hash}")
+    check_update = input("Do you want to check for updates? (y/n): ").strip().lower()
+    
+    if check_update == 'y':
+        response = requests.get("https://raw.githubusercontent.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/main/versions.txt")
+        if response.status_code == 200:
+            latest_version, latest_hash = response.text.splitlines()[0].split()
+            print(f"Latest version: {latest_version}")
+            print(f"Latest hash: {latest_hash}")
+            
+            if version != latest_version or current_hash != latest_hash:
+                update = input("A new version is available. Do you want to update? (y/n): ").strip().lower()
+                if update == 'y':
+                    response = requests.get("https://raw.githubusercontent.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/main/hcmt.py")
+                    if response.status_code == 200:
+                        new_script_path = os.path.join(os.path.dirname(__file__), 'hcmt_new.py')
+                        with open(new_script_path, 'w') as f:
+                            f.write(response.text)
+                        
+                        if calculate_hash(new_script_path) == latest_hash:
+                            os.replace(new_script_path, __file__)
+                            print("Update successful. Restarting script...")
+                            os.execv(sys.executable, ['python'] + sys.argv + ['--no-update'])
+                        else:
+                            print("Hash mismatch after download. Update aborted.")
+                    else:
+                        print("Failed to download the latest version.")
+            else:
+                print("You already have the latest version.")
+        else:
+            print("Failed to check for updates.")
+
 # Main interaction and menu
 def main_menu():
     logging.debug("Entered main_menu function")
@@ -829,6 +888,8 @@ def main_menu():
         input("Press Enter to exit...")
 
 if __name__ == "__main__":
+    if '--no-update' not in sys.argv:
+        check_for_updates()
     try:
         logging.debug("Program started")
         if sys.platform == 'darwin':
