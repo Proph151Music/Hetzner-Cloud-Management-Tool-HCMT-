@@ -8,12 +8,12 @@ import warnings
 from cryptography.utils import CryptographyDeprecationWarning
 
 # Version of the script
-version = "0.1.7.8"
+version = "0.1.7.9"
 
 # Suppress specific deprecation warnings
 warnings.filterwarnings("ignore", category=CryptographyDeprecationWarning)
 
-DEBUG_MODE = True
+DEBUG_MODE = False
 
 # Set up logging
 logger = logging.getLogger()
