@@ -8,7 +8,7 @@ import warnings
 from cryptography.utils import CryptographyDeprecationWarning
 
 # Version of the script
-version = "0.1.7.9"
+version = "0.1.8.0"
 
 # Suppress specific deprecation warnings
 warnings.filterwarnings("ignore", category=CryptographyDeprecationWarning)
@@ -711,34 +711,35 @@ def check_for_updates():
     print(f"Current version: {version}")
     print(f"Current hash: {current_hash}")
     check_update = input("Do you want to check for updates? (y/n): ").strip().lower()
-    
+
     if check_update == 'y':
         response = requests.get("https://raw.githubusercontent.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/main/versions.txt")
         if response.status_code == 200:
-            latest_version, latest_hash = response.text.splitlines()[0].split()
+            lines = response.text.splitlines()
+            latest_version, latest_hash = lines[0].split()
             print(f"Latest version: {latest_version}")
             print(f"Latest hash: {latest_hash}")
-            
+
             if version != latest_version or current_hash != latest_hash:
                 update = input("A new version is available. Do you want to update? (y/n): ").strip().lower()
                 if update == 'y':
                     script_path = os.path.realpath(__file__)
                     new_script_path = script_path + '.new'
-                    
+
                     try:
                         download_file("https://raw.githubusercontent.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/main/hcmt.py", new_script_path)
                         logger.debug(f"New script downloaded: {new_script_path}")
-                        
+
                         downloaded_hash = calculate_hash(new_script_path)
                         logger.debug(f"Expected hash: {latest_hash}")
                         logger.debug(f"Downloaded hash: {downloaded_hash}")
-                        
+
                         if downloaded_hash == latest_hash:
                             create_updater_script()
                             logger.debug("Updater script created")
                             print("Update downloaded. Running updater...")
                             try:
-                                os.execv(sys.executable, ['python', 'updater.py', script_path, new_script_path, '--no-update'])
+                                os.execv(sys.executable, [sys.executable, 'updater.py', script_path, new_script_path, '--no-update'])
                             except Exception as e:
                                 logger.error(f"Failed to execute updater script: {e}")
                         else:
