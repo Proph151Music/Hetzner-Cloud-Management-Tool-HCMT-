@@ -30,7 +30,7 @@ else:
     logging.debug("Running in script mode (not compiled)")
 
 # Version of the script
-version = "0.1.7.3"
+version = "0.1.7.4"
 
 # Initialize global variables
 api_key = None
@@ -43,6 +43,40 @@ def calculate_hash(file_path):
         buf = f.read()
         hasher.update(buf)
     return hasher.hexdigest()
+
+def create_updater_script():
+    updater_script_content = '''
+import os
+import sys
+import shutil
+import time
+
+def main(script_path, new_script_path):
+    # Give some time to ensure the main script has exited
+    time.sleep(1)
+    
+    # Replace the old script with the new script
+    try:
+        shutil.move(new_script_path, script_path)
+        print("Update successful. Restarting script...")
+        # Restart the script
+        os.execv(sys.executable, ['python'] + [script_path] + sys.argv[1:])
+    except Exception as e:
+        print(f"Failed to update the script: {e}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print("Usage: updater.py <script_path> <new_script_path>")
+        sys.exit(1)
+    
+    script_path = sys.argv[1]
+    new_script_path = sys.argv[2]
+    
+    main(script_path, new_script_path)
+'''
+    with open('updater.py', 'w') as f:
+        f.write(updater_script_content)
 
 def setup_virtual_environment():
     logging.debug("Entered setup_virtual_environment function")
@@ -651,9 +685,9 @@ def check_for_updates():
                             f.write(response.text)
                         
                         if calculate_hash(new_script_path) == latest_hash:
-                            os.replace(new_script_path, script_path)
-                            print("Update successful. Restarting script...")
-                            os.execv(sys.executable, ['python'] + sys.argv + ['--no-update'])
+                            create_updater_script()
+                            print("Update downloaded. Running updater...")
+                            os.execv(sys.executable, ['python', 'updater.py', script_path, new_script_path])
                         else:
                             print("Hash mismatch after download. Update aborted.")
                     else:
