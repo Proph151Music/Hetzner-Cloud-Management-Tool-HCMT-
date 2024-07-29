@@ -19,7 +19,7 @@ The Hetzner Cloud Management Tool (HCMT) is a powerful script designed to manage
 ## Installation
 
 ### Step 1: Install Python
-
+--------------------
 #### Windows
 
 1. Right click on the [install_python.bat](https://raw.githubusercontent.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/main/install_python.bat) file and select "Save As".
@@ -30,8 +30,17 @@ This will check if you have Python and PUP installed.  If not it will ask if you
 
 To make things even easier, when the script detects that you already have python and pup installed properly, it will ask if you'd like to launch the hcmt.py file. You can essentially skip Step 2, if you use this method.
 
+--------------------
+
 #### macOS
 
+By default Mac should already have Python installed. But let's make sure...
+
+**Ensure Python 3 is installed:**
+
+    python3 --version
+**Installing Python 3 if not found:**
+If Python is not installed then follow these instructions:
 1. Open Terminal.
 2. Install Homebrew if not already installed:
 
@@ -45,6 +54,8 @@ To make things even easier, when the script detects that you already have python
     brew install python
     ```
 
+--------------------
+
 #### Linux
 
 1. Open Terminal.
@@ -56,9 +67,9 @@ To make things even easier, when the script detects that you already have python
         sudo apt-get update
         sudo apt-get install python3
         ```
-
+--------------------
 ### Step 2: Download the Script
-
+--------------------
 #### Windows
 
 1. Download the [hcmt.py](https://github.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/raw/main/hcmt.py) file.
@@ -68,21 +79,72 @@ To make things even easier, when the script detects that you already have python
     ```sh
     python hcmt.py
     ```
+--------------------
+#### macOS
 
-#### macOS and Linux
+1. **Download the [hcmt.py](https://github.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/raw/main/hcmt.py) file:**
 
-1. Download the [hcmt.py](https://github.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/raw/main/hcmt.py) file using a web browser or terminal:
-
-    ```sh
-    wget https://raw.githubusercontent.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/main/hcmt.py -O ~/Downloads/hcmt.py
-    ```
-
-2. Open Terminal and navigate to the directory where `hcmt.py` is saved.
-3. Run the script:
+    Use `curl` to download the latest version of `hcmt.py` to ensure you get the most recent non-cached version. Open Terminal and run:
 
     ```sh
-    python3 ~/Downloads/hcmt.py
+    curl -o hcmt.py -L -H "Cache-Control: no-cache" https://raw.githubusercontent.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/main/hcmt.py
     ```
+
+2. **Navigate to the directory where `hcmt.py` is saved:**
+
+    ```sh
+    cd path/to/directory
+    ```
+
+3. **Ensure Python 3 is installed:**
+
+    ```sh
+    python3 --version
+    ```
+
+    If Python 3 is not installed, you can install it using the instructions on the official [Python website](https://www.python.org/downloads/).
+
+4. **Run the script:**
+
+    ```sh
+    python3 hcmt.py
+    ```
+--------------------
+#### Linux
+
+1. **Download the `hcmt.py` file:**
+
+    Use `curl` to download the latest version of `hcmt.py` to ensure you get the most recent non-cached version. Open Terminal and run:
+
+    ```sh
+    curl -o hcmt.py -L -H "Cache-Control: no-cache" https://raw.githubusercontent.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/main/hcmt.py
+    ```
+
+2. **Navigate to the directory where `hcmt.py` is saved:**
+
+    ```sh
+    cd path/to/directory
+    ```
+
+3. **Ensure Python 3 is installed:**
+
+    ```sh
+    python3 --version
+    ```
+
+    If Python 3 is not installed, you can install it using your distribution’s package manager. For example, on Ubuntu:
+
+    ```sh
+    sudo apt-get update
+    sudo apt-get install python3
+    ```
+
+4. **Run the script:**
+
+    ```sh
+    python3 hcmt.py
+    ```
+--------------------
     
 ## Usage
 
