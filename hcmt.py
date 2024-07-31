@@ -8,7 +8,7 @@ import warnings
 from cryptography.utils import CryptographyDeprecationWarning
 
 # Version of the script
-version = "0.1.8.0"
+version = "0.1.8.1"
 
 # Suppress specific deprecation warnings
 warnings.filterwarnings("ignore", category=CryptographyDeprecationWarning)
@@ -134,8 +134,10 @@ def setup_virtual_environment():
     else:
         logging.info("Virtual environment already exists.")
 
-    activate_script = os.path.join(venv_path, "bin", "activate_this.py")
-    exec(open(activate_script).read(), {'__file__': activate_script})
+    # Activate the virtual environment
+    activate_script = os.path.join(venv_path, "bin", "activate")
+    os.environ["VIRTUAL_ENV"] = venv_path
+    os.environ["PATH"] = os.path.join(venv_path, "bin") + os.pathsep + os.environ["PATH"]
     logging.info("Virtual environment activated.")
 
 def install_required_packages():
