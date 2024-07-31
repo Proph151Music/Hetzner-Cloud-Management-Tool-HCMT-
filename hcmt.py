@@ -8,12 +8,12 @@ import warnings
 from cryptography.utils import CryptographyDeprecationWarning
 
 # Version of the script
-version = "0.1.8.2"
+version = "0.1.8.3"
 
 # Suppress specific deprecation warnings
 warnings.filterwarnings("ignore", category=CryptographyDeprecationWarning)
 
-DEBUG_MODE = True
+DEBUG_MODE = False
 
 # Set up logging
 logger = logging.getLogger()
@@ -75,6 +75,7 @@ import shutil
 import time
 import logging
 import hashlib
+import subprocess
 
 # Set up logging
 logging.basicConfig(filename='updater.log', level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s')
@@ -141,7 +142,7 @@ def main(script_path, new_script_path, *args):
             exec_args = [sys.executable, script_path] + [arg for arg in args if arg != '--no-update']
             exec_args.append('--no-update')
             logging.debug(f"Executing new script with args: {exec_args}")
-            os.execv(sys.executable, exec_args)
+            subprocess.Popen(exec_args)
         except Exception as e:
             logging.error(f"Failed to update the script: {e}", exc_info=True)
             print(f"Failed to update the script: {e}")
