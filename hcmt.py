@@ -8,7 +8,7 @@ import warnings
 from cryptography.utils import CryptographyDeprecationWarning
 
 # Version of the script
-version = "0.1.8.5"
+version = "0.1.9.0"
 
 def remove_updater():
     updater_script = 'updater.py'
@@ -36,17 +36,21 @@ console_handler.setLevel(logging.DEBUG if DEBUG_MODE else logging.INFO)
 console_formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
 console_handler.setFormatter(console_formatter)
 
-file_handler = logging.FileHandler('hetzner_debug.log')
-file_handler.setLevel(logging.DEBUG)
-file_formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
-file_handler.setFormatter(file_formatter)
+# Only add the file handler if DEBUG_MODE is True
+if DEBUG_MODE:
+    file_handler = logging.FileHandler('hetzner_debug.log')
+    file_handler.setLevel(logging.DEBUG)
+    file_formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
+    file_handler.setFormatter(file_formatter)
+    logger.addHandler(file_handler)
 
 # Remove existing handlers if any to avoid duplicate logging
 if logger.hasHandlers():
     logger.handlers.clear()
 
 logger.addHandler(console_handler)
-logger.addHandler(file_handler)
+if DEBUG_MODE:
+    logger.addHandler(file_handler)
 
 logger.debug("Starting Hetzner Cloud Management Tool")
 
@@ -317,6 +321,11 @@ def pause_and_return():
     input("Press any key to continue...")
     main_menu()
 
+def format_path(path):
+    if os.name == 'nt':
+        return path.replace('/', '\\')
+    return path.replace('\\', '/')
+
 def create_and_upload_ssh_key(ssh_key_name=None):
     global api_key, global_passphrase
     headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
@@ -334,12 +343,20 @@ def create_and_upload_ssh_key(ssh_key_name=None):
     existing_keys = response.json().get('ssh_keys', [])
     for key in existing_keys:
         if key['name'] == ssh_key_name:
-            print(f"SSH key '{ssh_key_name}' already exists. Using the existing key.")
+            print(f"SSH key '{ssh_key_name}' found.")
+            print("")
             key_path = os.path.expanduser(f"~/.ssh/{ssh_key_name}")
+            key_path = format_path(key_path)
             return key['id'], key_path  # Return the existing key ID and path if found
 
     # Define the path for the new SSH key
     key_path = os.path.expanduser(f"~/.ssh/{ssh_key_name}")
+    key_path = format_path(key_path)
+
+    print(Fore.CYAN + "The SSH passphrase will be used whenever you log into your server.")
+    print("Make sure you document this SSH passphrase so that you do not forget it." + Style.RESET_ALL)
+    print("")
+
     while True:
         global_passphrase = getpass.getpass("Enter a passphrase for your SSH key (cannot be blank): ")
         if not global_passphrase:
@@ -696,10 +713,40 @@ def create_server(server_name, server_type_id, image, location, firewall_id, ssh
     if response.status_code == 201:
         server_data = response.json()
         print('Server created successfully.')
-        print(f"Server Name: {server_data['server']['name']}")
-        print(f"Host IP: {server_data['server']['public_net']['ipv4']['ip']}")
-        print("SSH Port: 22")
-        print(f"SSH Key Name: {ssh_key_name}")
+        host_ip = server_data['server']['public_net']['ipv4']['ip']
+        print(f"Server Name:    {server_data['server']['name']}")
+        print(f"Host IP:        {host_ip}")
+        print("SSH Port:        22")
+        print(f"SSH Key Name:   {ssh_key_name}")
+        print("")
+
+        # Format paths and commands
+        private_key_path = format_path(private_key_path)
+        ssh_command = f"ssh -i {private_key_path} root@{host_ip}"
+        sftp_command = f"sftp -i {private_key_path} root@{host_ip}"
+
+        print("Commands to access your server:")
+        print(f"SSH Command:    {ssh_command}")
+        print(f"SFTP Command:   {sftp_command}")
+        print("")
+
+        # Create a config file with the server details
+        config_content = f"""
+Server Name:    {server_name}
+Host IP:        {host_ip}
+SSH Port:       22
+SSH Key Name:   {ssh_key_name}
+
+Commands to access your server:
+SSH Command:    {ssh_command}
+SFTP Command:   {sftp_command}
+        """
+
+        config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), f"{server_name}_config.txt")
+        with open(config_path, 'w') as config_file:
+            config_file.write(config_content.strip())
+
+        print(f"Configuration saved to: {config_path}")
         print("")
 
         if os.name == 'nt':  # Only proceed with PuTTY export on Windows
@@ -1044,9 +1091,6 @@ def main_menu():
 
             print("")
             print(f"-===[ SERVER CREATION ]===-")
-            print("")
-            print(Fore.CYAN + "Make sure you document all of the server configuration that is shown after the server creation is completed!")
-            print("You will need these details to properly connect to your server." + Style.RESET_ALL)
             print("")
             create_server(server_name, server_type_id, image, location, firewall_id, ssh_key_name)
             print("")
