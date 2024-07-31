@@ -8,7 +8,7 @@ import warnings
 from cryptography.utils import CryptographyDeprecationWarning
 
 # Version of the script
-version = "0.1.8.4"
+version = "0.1.8.5"
 
 def remove_updater():
     updater_script = 'updater.py'
@@ -776,6 +776,7 @@ def check_for_updates():
     check_update = input("Do you want to check for updates? (y/n): ").strip().lower()
 
     if check_update == 'y':
+        print("")
         response = requests.get("https://raw.githubusercontent.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/main/versions.txt")
         if response.status_code == 200:
             lines = response.text.splitlines()
@@ -824,6 +825,7 @@ def check_for_updates():
                 print("You already have the latest version.")
                 logger.debug("You already have the latest version.")
         else:
+            print("")
             print("Failed to check for updates.")
             logger.error("Failed to check for updates.")
 
