@@ -8,7 +8,19 @@ import warnings
 from cryptography.utils import CryptographyDeprecationWarning
 
 # Version of the script
-version = "0.1.8.3"
+version = "0.1.8.4"
+
+def remove_updater():
+    updater_script = 'updater.py'
+    if os.path.exists(updater_script):
+        try:
+            os.remove(updater_script)
+            logging.debug(f"{updater_script} removed successfully.")
+        except Exception as e:
+            logging.error(f"Failed to remove {updater_script}: {e}")
+
+if '--no-update' in sys.argv:
+    remove_updater()
 
 # Suppress specific deprecation warnings
 warnings.filterwarnings("ignore", category=CryptographyDeprecationWarning)
@@ -142,7 +154,9 @@ def main(script_path, new_script_path, *args):
             exec_args = [sys.executable, script_path] + [arg for arg in args if arg != '--no-update']
             exec_args.append('--no-update')
             logging.debug(f"Executing new script with args: {exec_args}")
-            subprocess.Popen(exec_args)
+            subprocess.Popen([sys.executable, script_path, '--no-update'])
+            logging.debug("New script launched. Exiting updater.")
+            sys.exit(0)  # Exit updater script
         except Exception as e:
             logging.error(f"Failed to update the script: {e}", exc_info=True)
             print(f"Failed to update the script: {e}")
