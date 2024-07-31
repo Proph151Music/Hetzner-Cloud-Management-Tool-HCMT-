@@ -8,12 +8,12 @@ import warnings
 from cryptography.utils import CryptographyDeprecationWarning
 
 # Version of the script
-version = "0.1.8.1"
+version = "0.1.8.2"
 
 # Suppress specific deprecation warnings
 warnings.filterwarnings("ignore", category=CryptographyDeprecationWarning)
 
-DEBUG_MODE = False
+DEBUG_MODE = True
 
 # Set up logging
 logger = logging.getLogger()
@@ -74,9 +74,17 @@ import sys
 import shutil
 import time
 import logging
+import hashlib
 
 # Set up logging
 logging.basicConfig(filename='updater.log', level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s')
+
+def calculate_hash(file_path):
+    hasher = hashlib.sha256()
+    with open(file_path, 'rb') as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hasher.update(chunk)
+    return hasher.hexdigest()
 
 def main(script_path, new_script_path, *args):
     logging.debug("Updater script started with arguments: %s", sys.argv)
@@ -87,17 +95,55 @@ def main(script_path, new_script_path, *args):
     retries = 6  # Retry every 10 seconds up to 1 minute
     while retries > 0:
         try:
+            # Verify the new script exists
+            if not os.path.exists(new_script_path):
+                logging.error(f"New script file does not exist: {new_script_path}")
+                raise FileNotFoundError(f"No such file or directory: '{new_script_path}'")
+            
+            # Backup the old script
+            backup_script_path = script_path + '.backup'
             if os.path.exists(script_path):
-                os.remove(script_path)
-                logging.debug(f"Removed old script: {script_path}")
+                shutil.move(script_path, backup_script_path)
+                logging.debug(f"Moved old script to backup: {backup_script_path}")
+            else:
+                logging.debug(f"No existing script found at: {script_path}")
+            
+            # Move the new script to the original script's location
             shutil.move(new_script_path, script_path)
             logging.debug(f"Moved new script to: {script_path}")
             print("Update successful. Restarting script...")
             logging.debug("Update successful. Restarting script...")
+            
+            # Verify the hash of the new script
+            new_hash = calculate_hash(script_path)
+            expected_hash = sys.argv[4] if len(sys.argv) > 4 else new_hash
+            logging.debug(f"Expected script hash: {expected_hash}")
+            logging.debug(f"New script hash: {new_hash}")
+            
+            if expected_hash == new_hash:
+                logging.debug("Hash verification successful.")
+            else:
+                logging.error("Hash verification failed. Reverting to backup...")
+                shutil.move(backup_script_path, script_path)
+                logging.debug("Reverted to backup script.")
+                raise Exception("Hash verification failed.")
+            
+            # Ensure the new script is executable
+            os.chmod(script_path, 0o755)
+            logging.debug(f"Set executable permissions for: {script_path}")
+
+            # Clean up the backup script after successful update
+            if os.path.exists(backup_script_path):
+                os.remove(backup_script_path)
+                logging.debug(f"Backup script removed: {backup_script_path}")
+            
             # Restart the script with '--no-update' flag and original script arguments
-            os.execv(sys.executable, [sys.executable, script_path, '--no-update'] + list(args))
+            exec_args = [sys.executable, script_path] + [arg for arg in args if arg != '--no-update']
+            exec_args.append('--no-update')
+            logging.debug(f"Executing new script with args: {exec_args}")
+            os.execv(sys.executable, exec_args)
         except Exception as e:
-            logging.error(f"Failed to update the script: {e}")
+            logging.error(f"Failed to update the script: {e}", exc_info=True)
             print(f"Failed to update the script: {e}")
             retries -= 1
             if retries > 0:
@@ -115,8 +161,8 @@ if __name__ == "__main__":
         print("Usage: updater.py <script_path> <new_script_path> [additional args...]")
         sys.exit(1)
     
-    script_path = sys.argv[1]
-    new_script_path = sys.argv[2]
+    script_path = os.path.abspath(sys.argv[1])
+    new_script_path = os.path.abspath(sys.argv[2])
     additional_args = sys.argv[3:]
     
     main(script_path, new_script_path, *additional_args)
@@ -741,9 +787,17 @@ def check_for_updates():
                             logger.debug("Updater script created")
                             print("Update downloaded. Running updater...")
                             try:
-                                os.execv(sys.executable, [sys.executable, 'updater.py', script_path, new_script_path, '--no-update'])
+                                # Log before launching updater
+                                logger.debug(f"Launching updater script: {[sys.executable, 'updater.py', script_path, new_script_path, '--no-update']}")
+                                # Wait a bit to ensure file system is ready
+                                time.sleep(2)
+                                # Launch updater.py and exit hcmt.py
+                                subprocess.Popen([sys.executable, 'updater.py', script_path, new_script_path, '--no-update'])
+                                logger.debug("Updater script launched. Exiting hcmt.py")
+                                sys.exit(0)  # Exit hcmt.py
                             except Exception as e:
                                 logger.error(f"Failed to execute updater script: {e}")
+                                print(f"Failed to execute updater script: {e}")
                         else:
                             print("Hash mismatch after download. Update aborted.")
                             logger.error("Hash mismatch after download. Update aborted.")
@@ -762,6 +816,10 @@ def check_for_updates():
 def main_menu():
     logging.debug("Entered main_menu function")
     global api_key
+    if '--no-update' in sys.argv:
+        logger.handlers.clear()
+        logger.addHandler(console_handler)
+        logger.addHandler(file_handler)
     clear_screen()
     print("")
     get_api_key()
