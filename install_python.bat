@@ -26,6 +26,8 @@ if "%PYTHON_ERRORLEVEL%"=="0" (
     )
     echo Python version !PYTHON_VERSION! is already installed. >> %LOGFILE%
     echo Python version !PYTHON_VERSION! is already installed.
+    for /f "delims=" %%i in ('powershell -command "(Get-Command python).Path"') do set "PYTHON_DIR=%%~dpi"
+    echo Python is located at: !PYTHON_DIR! >> %LOGFILE%
 
     REM Check for pip installation
     echo Checking if pip is installed... >> %LOGFILE%
@@ -61,10 +63,46 @@ if "%PYTHON_ERRORLEVEL%"=="0" (
 ) else (
     echo Python not found in PATH, searching all possible locations... >> %LOGFILE%
     echo Python not found in PATH, searching all possible locations...
-    call :find_python_in_common_locations
+    call :find_python_in_registry
+
+    if "%PYTHON_FOUND%"=="0" (
+        call :find_python_in_common_locations
+    )
 )
 
 goto end
+
+:find_python_in_registry
+set PYTHON_FOUND=0
+set "REG_PATH=HKLM\SOFTWARE\Python\PythonCore"
+echo Querying registry path: %REG_PATH% >> %LOGFILE%
+
+for /f "tokens=*" %%i in ('reg query "%REG_PATH%" /s /v ExecutablePath 2^>nul') do (
+    echo Registry line: %%i >> %LOGFILE%
+    if "%%i"=="End of search: 1 match(es) found." goto :end_registry_search
+    for /f "tokens=2*" %%j in ("%%i") do (
+        if "%%j"=="REG_SZ" (
+            set "PYTHON_EXEC=%%k"
+            echo Extracted ExecutablePath: !PYTHON_EXEC! >> %LOGFILE%
+            set "PYTHON_DIR=!PYTHON_EXEC:\python.exe=!"
+            setx PATH "%PYTHON_DIR%;%PYTHON_DIR%\Scripts;%PATH%" >> %LOGFILE% 2>>&1
+            echo Python directory set from registry: !PYTHON_DIR! >> %LOGFILE%
+            echo Extracted PYTHON_DIR: !PYTHON_DIR! >> %LOGFILE%
+            set PYTHON_FOUND=1
+            goto :end_registry_search
+        )
+    )
+)
+
+:end_registry_search
+if %PYTHON_FOUND% equ 1 (
+    echo Found Python installation in registry: %PYTHON_DIR% >> %LOGFILE%
+    echo Found Python installation in registry: %PYTHON_DIR%
+    set PATH=%PYTHON_DIR%;%PYTHON_DIR%\Scripts;%PATH%
+    setx PATH "%PATH%" >> %LOGFILE% 2>>&1
+    echo Added Python to PATH and continuing to check_python >> %LOGFILE%
+    goto check_python
+)
 
 :find_python_in_common_locations
 set PYTHON_FOUND=0
