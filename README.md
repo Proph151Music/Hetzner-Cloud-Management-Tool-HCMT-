@@ -26,8 +26,14 @@ The Hetzner Cloud Management Tool (HCMT) is a powerful script designed to manage
 2. Save the file as "hcmt_launcher.bat" in your desired location, such as the "C:\Users\YourUsername\Downloads" directory.
 3. Browse to the location you downloaded the file and right click on it to choose "Run as Administrator".
 
-This will check if you have Python and PUP installed.  If not it will ask if you want the script to download and set it up for you automatically.
-To make things even easier, when the script detects that you already have python and pup installed properly, it will ask if you'd like to launch the hcmt.py file. 
+The `hcmt_launcher.bat` file will check if you have Python and PUP installed.  If not, it will ask if you want the script to download and set it up for you automatically.
+To make things even easier, when `hcmt_launcher.bat` detects that you already have python and pup installed properly, it will ask if you'd like to launch the hcmt.py file.
+
+- Alternatively, if python and pip are already installed and properly setup in the PATH, the `hcmt.py` file can be launched directly from a CMD prompt using the python command.
+
+  ```sh
+  python hcmt.py
+  ```
 
 --------------------
 
@@ -35,7 +41,7 @@ To make things even easier, when the script detects that you already have python
 
 By default Mac should already have Python installed. But let's make sure...
 
-1. **Download the [hcmt.py](https://github.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/raw/main/hcmt.py) file:**
+1. **Download the Windows [hcmt.py](https://github.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/raw/main/hcmt.py) file:**
 
     Open Terminal and Use `curl` to download the latest version of `hcmt.py` to ensure you get the most recent non-cached version. Open Terminal and run:
 
