@@ -8,7 +8,7 @@ import warnings
 from cryptography.utils import CryptographyDeprecationWarning
 
 # Version of the script
-version = "0.1.9.2"
+version = "0.1.9.3"
 
 def remove_updater():
     updater_script = 'updater.py'
