@@ -8,7 +8,7 @@ import warnings
 from cryptography.utils import CryptographyDeprecationWarning
 
 # Version of the script
-version = "0.1.9.1"
+version = "0.1.9.2"
 
 def remove_updater():
     updater_script = 'updater.py'
@@ -206,6 +206,21 @@ def setup_virtual_environment():
     logging.info("Virtual environment activated.")
 
 def install_required_packages():
+    if os.name == 'nt': 
+        # Ensure pywin32 is installed on Windows
+        try:
+            import win32com.client
+        except ImportError:
+            def install_package(package_name):
+                subprocess.check_call([sys.executable, "-m", "pip", "install", package_name])
+            install_package('pywin32')
+            # Initialize pywin32 after installation
+            try:
+                from pywin32_postinstall import install
+                install()
+            except ImportError:
+                subprocess.check_call([sys.executable, os.path.join(sys.exec_prefix, 'Scripts', 'pywin32_postinstall.py'), '-install'])
+            import win32com.client
     logging.debug("Entered install_required_packages function")
     required_packages = ["requests", "colorama", "paramiko>=3.0.0", "cryptography>=39.0.0"]
     for package in required_packages:
@@ -691,6 +706,45 @@ def fetch_and_display_locations():
         print('Failed to fetch locations.')
         return []
 
+def create_shortcut(command, wdir, name, icon):
+    import win32com.client
+    shell = win32com.client.Dispatch("WScript.Shell")
+    shortcut = shell.CreateShortcut(name)
+    shortcut.TargetPath = "cmd.exe"
+    shortcut.Arguments = f"/k {command}"
+    shortcut.WorkingDirectory = wdir
+    shortcut.IconLocation = icon
+    shortcut.save()
+
+def run_command(command):
+    try:
+        result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return result.stdout.decode().strip(), result.stderr.decode().strip()
+    except subprocess.CalledProcessError as e:
+        return None, f"Command failed with exit status {e.returncode}: {e.stderr.decode().strip()}"
+
+def add_host_key_to_known_hosts(host_ip):
+    try:
+        known_hosts_path = os.path.expanduser("~/.ssh/known_hosts")
+        known_hosts_path = format_path(known_hosts_path)
+        # Remove the existing host key if it exists
+        remove_command = f'ssh-keygen -R {host_ip}'
+        print(f"Running command: {remove_command}")
+        output, error = run_command(remove_command)
+        if error and 'not found' not in error:
+            raise Exception(error)
+        print(f"Command output: {output}")
+
+        # Add the new host key
+        add_command = f'ssh-keyscan -H {host_ip} >> "{known_hosts_path}"'
+        print(f"Running command: {add_command}")
+        output, error = run_command(add_command)
+        if error:
+            raise Exception(error)
+        print(f"Command output: {output}")
+    except Exception as e:
+        print("")
+
 def create_server(server_name, server_type_id, image, location, firewall_id, ssh_key_name):
     global api_key, global_passphrase
     url = 'https://api.hetzner.cloud/v1/servers'
@@ -720,6 +774,9 @@ def create_server(server_name, server_type_id, image, location, firewall_id, ssh
         print(f"SSH Key Name:   {ssh_key_name}")
         print("")
 
+        # Add the new host key to known_hosts
+        add_host_key_to_known_hosts(host_ip)
+
         # Format paths and commands
         private_key_path = format_path(private_key_path)
         ssh_command = f"ssh -i {private_key_path} root@{host_ip}"
@@ -742,14 +799,53 @@ SSH Command:    {ssh_command}
 SFTP Command:   {sftp_command}
         """
 
-        config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), f"{server_name}_config.txt")
-        with open(config_path, 'w') as config_file:
-            config_file.write(config_content.strip())
+        if os.name == 'nt':
+            # Ensure pywin32 is installed on Windows
+            try:
+                import win32com.client
+            except ImportError:
+                def install_package(package_name):
+                    subprocess.check_call([sys.executable, "-m", "pip", "install", package_name])
+                install_package('pywin32')
+                # Initialize pywin32 after installation
+                try:
+                    from pywin32_postinstall import install
+                    install()
+                except ImportError:
+                    subprocess.check_call([sys.executable, os.path.join(sys.exec_prefix, 'Scripts', 'pywin32_postinstall.py'), '-install'])
+                import win32com.client
 
-        print(f"Configuration saved to: {config_path}")
-        print("")
+            # Path to save the config and shortcuts
+            folder_path = os.path.join(os.getcwd(), server_name)
+            folder_path = format_path(folder_path)
+            os.makedirs(folder_path, exist_ok=True)
 
-        if os.name == 'nt':  # Only proceed with PuTTY export on Windows
+            # Config file path
+            config_path = os.path.join(folder_path, "server_config.txt")
+            with open(config_path, 'w') as config_file:
+                config_file.write(config_content.strip())
+
+            # Paths for shortcuts
+            ssh_shortcut_path = os.path.join(folder_path, "SSH to Server.lnk")
+            sftp_shortcut_path = os.path.join(folder_path, "SFTP to Server.lnk")
+
+            # Create SSH shortcut
+            create_shortcut(f'ssh -i {private_key_path} root@{host_ip}', folder_path, ssh_shortcut_path, 'C:\\Windows\\System32\\shell32.dll,135')
+
+            # Create SFTP shortcut
+            create_shortcut(f'sftp -i {private_key_path} root@{host_ip}', folder_path, sftp_shortcut_path, 'C:\\Windows\\System32\\shell32.dll,146')
+
+            print(f"Configuration and shortcuts saved to: {folder_path}")
+        else:
+            config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), f"{server_name}_config.txt")
+            config_path = format_path(config_path)
+            with open(config_path, 'w') as config_file:
+                config_file.write(config_content.strip())
+
+            print(f"Configuration saved to: {config_path}")
+            print("")
+
+        if os.name == 'nt':
             export_decision = input("Do you want to export the Server details to PuTTY? (y/n): ").lower()
             if export_decision == 'y':
                 while not check_winscp_and_putty_installed():
@@ -786,7 +882,7 @@ def check_server_name_availability(server_name):
         return not any(srv['name'] == server_name for srv in servers)
     else:
         print("Failed to fetch server list:", response.text)
-        return False  # Assume not available if the API call fails
+        return False
 
 def get_api_key():
     global api_key
