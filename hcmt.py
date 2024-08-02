@@ -8,7 +8,7 @@ import warnings
 from cryptography.utils import CryptographyDeprecationWarning
 
 # Version of the script
-version = "0.1.9.4"
+version = "0.1.9.5"
 
 def remove_updater():
     updater_script = 'updater.py'
@@ -823,13 +823,13 @@ SFTP Command:   {sftp_command}
             os.makedirs(folder_path, exist_ok=True)
 
             # Config file path
-            config_path = os.path.join(folder_path, "server_config.txt")
+            config_path = os.path.join(folder_path, f"{server_name}_config.txt")
             with open(config_path, 'w') as config_file:
                 config_file.write(config_content.strip())
 
             # Paths for shortcuts
-            ssh_shortcut_path = os.path.join(folder_path, "SSH to Server.lnk")
-            sftp_shortcut_path = os.path.join(folder_path, "SFTP to Server.lnk")
+            ssh_shortcut_path = os.path.join(folder_path, f"SSH to {server_name}.lnk")
+            sftp_shortcut_path = os.path.join(folder_path, f"SFTP to {server_name}.lnk")
 
             # Create SSH shortcut
             create_shortcut(f'ssh -i {private_key_path} root@{host_ip}', folder_path, ssh_shortcut_path, 'C:\\Windows\\System32\\shell32.dll,135')
