@@ -38,11 +38,11 @@ The Hetzner Cloud Management Tool (HCMT) is a powerful script designed to manage
    - Navigate to the extracted folder.
    - Right-click on `hcmt_launcher.bat` and select "Run as Administrator".
 
-4. **Script Behavior:**
+   **Script Behavior:**
    - The `hcmt_launcher.bat` file will check if you have Python and pip installed. If not, it will ask if you want the script to download and set them up for you automatically.
    - If `hcmt_launcher.bat` detects that you already have Python and pip installed properly, it will ask if you'd like to launch the `hcmt.py` file.
 
-5. **Direct Execution:**
+   **Direct Execution:**
    - Alternatively, if Python and pip are already installed and properly set up in the PATH, the `hcmt.py` file can be launched directly from a CMD prompt using the following command:
      ```sh
      python hcmt.py
@@ -72,10 +72,8 @@ By default Mac should already have Python installed.
 --------------------
 
 #### Linux
-
-1. Open Terminal.
    
-2. Install Python using your package manager:
+1. Install Python using your package manager:
 
     - **Debian/Ubuntu:**
 
@@ -84,7 +82,7 @@ By default Mac should already have Python installed.
         sudo apt-get install python3
         ```
 
-3. **Download the `hcmt.py` file:**
+2. **Download the `hcmt.py` file:**
 
     Use `curl` to download the latest version of `hcmt.py` to ensure you get the most recent non-cached version. Open Terminal and run:
 
@@ -92,13 +90,7 @@ By default Mac should already have Python installed.
     curl -o hcmt.py -L -H "Cache-Control: no-cache" https://raw.githubusercontent.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/main/hcmt.py
     ```
 
-4. **Navigate to the directory where `hcmt.py` is saved:**
-
-    ```sh
-    cd path/to/directory
-    ```
-
-5. **Run the script:**
+3. **Run the script:**
 
     ```sh
     python3 hcmt.py
@@ -111,23 +103,10 @@ By default Mac should already have Python installed.
 
 The script automatically installs the required packages (`requests`, `colorama`, `paramiko`). Simply run the script, and it will take care of the rest.
 
-## Creating a Hetzner API Key
+Create a Hetzner API Key
 
-1. Log in to your Hetzner Cloud account.
-2. Navigate to the "API Tokens" section. (It is inside the Security section.)
-3. Click "Generate API Token". Provide any name for the token and choose Read and Write.
-4. Copy the generated API key and use it when prompted by the script.
-
-Follow the on-screen instructions to perform your desired operations.
-
-When you run the script, you will be presented with a menu to choose from various options:
-
-F) **Setup Firewall:** Create or update a firewall with specific rules.
-S) **Create SSH Key Pair:** Generate and upload an SSH key pair to Hetzner Cloud.
 C) **Create Cloud Server:** (Recommended) Create a new cloud server with the specified configurations. This is where I recommend everyone start. It will walk you through all steps.
 X) **Exit:** Exit the tool.
-
-Follow the on-screen instructions to perform your desired operations.
 
 ## Logging
 
