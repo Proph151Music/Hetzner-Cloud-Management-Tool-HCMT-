@@ -21,28 +21,33 @@ The Hetzner Cloud Management Tool (HCMT) is a powerful script designed to manage
 --------------------
 
 #### Windows
+--------------------
 
-1. **Download the hcmt_launcher.bat file**
+**Download and Extract the hcmt_launcher.zip file**
+
+1. **Download the File:**
    - Navigate to the GitHub repository.
-   - Find the `Windows\hcmt_launcher.bat` file.
-   - Click on the file to open it in GitHub.
-   - Click on the "Download" button (or "Raw" and then save the page using your browser's "Save As" option). Do not right-click and "Save As" directly on the GitHub page as this can cause encoding issues.
-2. **Save the file**
-   - Save the file as `hcmt_launcher.bat` in your desired location, such as the `C:\Users\YourUsername\Downloads` directory.
-3. **Run the file**
-   - Browse to the location where you downloaded the file.
-   -  Right click on `hcmt_launcher.bat` and select "Run as Administrator".
-   
-   **Script Behavior:**
-   - The hcmt_launcher.bat file will check if you have Python and pip installed. If not, it will ask if you want the script to download and set them up for you automatically.
-   - If hcmt_launcher.bat detects that you already have Python and pip installed properly, it will ask if you'd like to launch the hcmt.py file.
-     
-   **Direct Execution:**
-   - Alternatively, if Python and pip are already installed and properly set up in the PATH, the `hcmt.py` file can be launched directly from a CMD prompt using the following command:
+   - [Right-click here and select "Save As"](https://github.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/raw/main/Windows/hcmt_launcher.zip) to download the `hcmt_launcher.zip` file.
+   - Save the file in your desired location, such as the `C:\Users\YourUsername\Downloads` directory.
 
-  ```sh
-  python hcmt.py
-  ```
+2. **Extract the File:**
+   - Browse to the location where you downloaded the `hcmt_launcher.zip` file.
+   - Right-click on `hcmt_launcher.zip` and select "Extract All...".
+   - Choose your desired extraction location and click "Extract".
+
+3. **Run the File:**
+   - Navigate to the extracted folder.
+   - Right-click on `hcmt_launcher.bat` and select "Run as Administrator".
+
+4. **Script Behavior:**
+   - The `hcmt_launcher.bat` file will check if you have Python and pip installed. If not, it will ask if you want the script to download and set them up for you automatically.
+   - If `hcmt_launcher.bat` detects that you already have Python and pip installed properly, it will ask if you'd like to launch the `hcmt.py` file.
+
+5. **Direct Execution:**
+   - Alternatively, if Python and pip are already installed and properly set up in the PATH, the `hcmt.py` file can be launched directly from a CMD prompt using the following command:
+     ```sh
+     python hcmt.py
+     ```
 
 --------------------
 
