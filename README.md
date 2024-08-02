@@ -105,7 +105,7 @@ The script automatically installs the required packages (`requests`, `colorama`,
 
 Create a Hetzner API Key
 
-C) **Create Cloud Server:** (Recommended) Create a new cloud server with the specified configurations. This is where I recommend everyone start. It will walk you through all steps.
+C) **Create Cloud Server:** Create a new cloud server with the specified configurations. This is where I recommend everyone start. It will walk you through all steps.
 X) **Exit:** Exit the tool.
 
 ## Logging
