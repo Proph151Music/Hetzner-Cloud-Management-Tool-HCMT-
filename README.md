@@ -52,7 +52,7 @@ The Hetzner Cloud Management Tool (HCMT) is a powerful script designed to manage
 
 #### macOS
 
-By default Mac should already have Python installed. But let's make sure...
+By default Mac should already have Python installed. 
 
 1. **Download the [hcmt.py](https://github.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/raw/main/hcmt.py) file:**
 
