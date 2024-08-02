@@ -8,7 +8,7 @@ import warnings
 from cryptography.utils import CryptographyDeprecationWarning
 
 # Version of the script
-version = "0.1.9.0"
+version = "0.1.9.1"
 
 def remove_updater():
     updater_script = 'updater.py'
@@ -893,8 +893,8 @@ def main_menu():
     print("")
     print(Fore.CYAN + "Hetzner Cloud Management Tool" + Style.RESET_ALL)
     print("\nPlease choose an option:")
-    print("F) Setup Firewall")
-    print("S) Create SSH Key Pair")
+    ### print("F) Setup Firewall")
+    ### print("S) Create SSH Key Pair")
     print("C) Create Cloud Server")
     print("X) Exit")
     choice = input("\nEnter your choice: ").upper()
