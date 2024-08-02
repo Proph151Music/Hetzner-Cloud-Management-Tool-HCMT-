@@ -26,7 +26,6 @@ The Hetzner Cloud Management Tool (HCMT) is a powerful script designed to manage
 **Download and Extract the hcmt_launcher.zip file**
 
 1. **Download the File:**
-   - Navigate to the GitHub repository.
    - [Right-click here and select "Save As"](https://github.com/Proph151Music/Hetzner-Cloud-Management-Tool-HCMT-/raw/main/Windows/hcmt_launcher.zip) to download the `hcmt_launcher.zip` file.
    - Save the file in your desired location, such as the `C:\Users\YourUsername\Downloads` directory.
 
