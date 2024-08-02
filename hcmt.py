@@ -8,7 +8,7 @@ import warnings
 from cryptography.utils import CryptographyDeprecationWarning
 
 # Version of the script
-version = "0.1.9.3"
+version = "0.1.9.4"
 
 def remove_updater():
     updater_script = 'updater.py'
@@ -43,6 +43,8 @@ if DEBUG_MODE:
     file_formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
     file_handler.setFormatter(file_formatter)
     logger.addHandler(file_handler)
+else:
+    file_handler = None
 
 # Remove existing handlers if any to avoid duplicate logging
 if logger.hasHandlers():
@@ -979,7 +981,8 @@ def main_menu():
     if '--no-update' in sys.argv:
         logger.handlers.clear()
         logger.addHandler(console_handler)
-        logger.addHandler(file_handler)
+        if DEBUG_MODE and file_handler:
+            logger.addHandler(file_handler)
     clear_screen()
     print("")
     get_api_key()
