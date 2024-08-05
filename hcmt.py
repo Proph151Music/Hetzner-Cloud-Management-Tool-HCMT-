@@ -11,7 +11,7 @@ import select
 from cryptography.utils import CryptographyDeprecationWarning
 
 # Version of the script
-version = "0.2.5.0"
+version = "0.2.7.5"
 
 easy_server = False
 
@@ -72,6 +72,7 @@ ssh_shortcut_path = None
 sftp_shortcut_path = None
 folder_path = None
 server_name = None
+nodectl_version = "v2.14.1"
 
 # Function to calculate the hash of a file
 def calculate_hash(file_path):
@@ -752,6 +753,17 @@ def add_host_key_to_known_hosts(host_ip):
     except Exception as e:
         logger.debug("")
 
+def get_latest_nodectl_version():
+    url = "https://api.github.com/repos/StardustCollective/nodectl/releases/latest"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Raise an exception for HTTP errors
+        latest_release = response.json()
+        return latest_release.get("tag_name", nodectl_version)
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Failed to fetch the latest nodectl version: {e}")
+        return nodectl_version
+    
 def install_nodectl(host_ip, private_key_path):
     global ssh_shortcut_path, sftp_shortcut_path, folder_path, server_name
 
@@ -846,35 +858,42 @@ def install_nodectl(host_ip, private_key_path):
             print("")
             return
     
+    nodectl_version = get_latest_nodectl_version()
+    print("")
+
     # Construct the full command
     if p12file:
         commands = (
-            f"sudo wget -N https://github.com/stardustcollective/nodectl/releases/download/v2.14.1/nodectl_x86_64 -P /usr/local/bin -O /usr/local/bin/nodectl && "
+            Fore.LIGHTGREEN_EX + f"sudo wget -N https://github.com/stardustcollective/nodectl/releases/download/" + Fore.LIGHTYELLOW_EX + nodectl_version + Style.RESET_ALL + Fore.LIGHTGREEN_EX + "/nodectl_x86_64 -P /usr/local/bin -O /usr/local/bin/nodectl && "
             f"sudo chmod +x /usr/local/bin/nodectl && "
             f"sudo nodectl install --quick-install --user {nodeuser} --p12-migration-path '/root/{os.path.basename(formatted_p12file)}' --cluster-config {network} --confirm && "
             f"sudo nodectl execute_starchiver -p {profile} --confirm && "
-            f"sudo nodectl upgrade --ni"
+            f"sudo nodectl upgrade --ni" + Style.RESET_ALL
         )
     else:
         commands = (
-            f"sudo wget -N https://github.com/stardustcollective/nodectl/releases/download/v2.14.1/nodectl_x86_64 -P /usr/local/bin -O /usr/local/bin/nodectl && "
+            Fore.LIGHTGREEN_EX + f"sudo wget -N https://github.com/stardustcollective/nodectl/releases/download/" + Fore.LIGHTYELLOW_EX + nodectl_version + Style.RESET_ALL + Fore.LIGHTGREEN_EX + "/nodectl_x86_64 -P /usr/local/bin -O /usr/local/bin/nodectl && "
             f"sudo chmod +x /usr/local/bin/nodectl && "
             f"sudo nodectl install --quick-install --user {nodeuser} --cluster-config {network} --confirm && "
             f"sudo nodectl execute_starchiver -p {profile} --confirm && "
-            f"sudo nodectl upgrade --ni"
+            f"sudo nodectl upgrade --ni" + Style.RESET_ALL
         )
 
     # Instructions for the user
     print(Fore.YELLOW + f"To install nodectl on your server, follow these steps:\n")
-    if ssh_shortcut_path:
-        print(f'1. Open the shortcut located at: ' + Fore.LIGHTCYAN_EX + '"' + ssh_shortcut_path + '"' + Style.RESET_ALL)
-    else:
-        print("Error: SSH shortcut path is not set.")
-        return
+    print("")
+    print(f'1. Open the shortcut located at: ' + Fore.LIGHTCYAN_EX + '"' + ssh_shortcut_path + '"' + Style.RESET_ALL)
+    print("")
     print(Fore.YELLOW + f"2. Once connected, enter the SSH passphrase to authenticate access to the server.")
+    print("")
     print(f"3. Copy and paste the following command to install nodectl:\n" + Style.RESET_ALL)
-    print(Fore.LIGHTCYAN_EX + f"{commands}\n" + Style.RESET_ALL)
-    print(Fore.YELLOW + f'\nConfiguration and shortcuts saved to: "' + Fore.LIGHTWHITE_EX + folder_path + Fore.YELLOW + '"' + Style.RESET_ALL)
+    print(Fore.LIGHTGREEN_EX + f"Latest nodectl version found: " + Style.RESET_ALL + nodectl_version)
+    print('If you need to install a different version of nodectl, you can edit the below command with the version you need to install, by editing the ' + Fore.LIGHTYELLOW_EX + 'YELLOW ' + Style.RESET_ALL + 'area of the code, before pasting it into the terminal.')
+    print("")
+    print(f"{commands}\n")
+    print("")
+    print(Fore.YELLOW + f'Configuration and shortcuts have been saved to:')
+    print(Fore.LIGHTWHITE_EX + folder_path + Style.RESET_ALL)
     print("")
 
     # Add the new details to the config file
@@ -1021,9 +1040,9 @@ SFTP Command:   {sftp_command}
             # Create SFTP shortcut
             create_shortcut(f'sftp -i {private_key_path} root@{host_ip}', folder_path, sftp_shortcut_path, 'C:\\Windows\\System32\\shell32.dll,146', "root")
 
-            print(Fore.YELLOW + f'\nConfiguration and shortcuts saved to: "' + Fore.LIGHTWHITE_EX + folder_path + Fore.YELLOW + '"' + Style.RESET_ALL)
+            print(Fore.YELLOW + f'Configuration and shortcuts have been saved to:')
+            print(Fore.LIGHTWHITE_EX + folder_path + Style.RESET_ALL)
             print("")
-            #print(f"Configuration and shortcuts saved to: {folder_path}")
         elif os.name == 'posix' and platform.system() == 'Darwin':
             # Paths for symlinks
             ssh_symlink_path = os.path.join(folder_path, f"SSH to {server_name}")
