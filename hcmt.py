@@ -1,3 +1,4 @@
+import platform
 import logging
 import time
 import sys
@@ -5,10 +6,12 @@ import subprocess
 import os
 import hashlib
 import warnings
+import getpass
+import select
 from cryptography.utils import CryptographyDeprecationWarning
 
 # Version of the script
-version = "0.1.9.5"
+version = "0.2.0.0"
 
 def remove_updater():
     updater_script = 'updater.py'
@@ -62,6 +65,11 @@ is_frozen = getattr(sys, 'frozen', False)
 # Initialize global variables
 api_key = None
 winscp_path = None
+nodeuser = "root"
+ssh_shortcut_path = None
+sftp_shortcut_path = None
+folder_path = None
+server_name = None
 
 # Function to calculate the hash of a file
 def calculate_hash(file_path):
@@ -360,8 +368,8 @@ def create_and_upload_ssh_key(ssh_key_name=None):
     existing_keys = response.json().get('ssh_keys', [])
     for key in existing_keys:
         if key['name'] == ssh_key_name:
-            print(f"SSH key '{ssh_key_name}' found.")
-            print("")
+            logger.debug(f"SSH key '{ssh_key_name}' found.")
+            logger.debug("")
             key_path = os.path.expanduser(f"~/.ssh/{ssh_key_name}")
             key_path = format_path(key_path)
             return key['id'], key_path  # Return the existing key ID and path if found
@@ -681,17 +689,6 @@ def fetch_and_display_ssh_keys():
         print('Failed to fetch SSH keys.')
         return []
 
-def get_ssh_key_name(ssh_key_id):
-    global api_key
-    url = f'https://api.hetzner.cloud/v1/ssh_keys/{ssh_key_id}'
-    headers = {'Authorization': f'Bearer {api_key}'}
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        return response.json()['ssh_key']['name']
-    else:
-        print('Failed to fetch SSH key name.')
-        return None
-
 def fetch_and_display_locations():
     global api_key
     url = 'https://api.hetzner.cloud/v1/locations'
@@ -708,15 +705,21 @@ def fetch_and_display_locations():
         print('Failed to fetch locations.')
         return []
 
-def create_shortcut(command, wdir, name, icon):
+def create_shortcut(command, wdir, name, icon, nodeuser):
     import win32com.client
     shell = win32com.client.Dispatch("WScript.Shell")
     shortcut = shell.CreateShortcut(name)
     shortcut.TargetPath = "cmd.exe"
+    command = command.replace('root', nodeuser)
     shortcut.Arguments = f"/k {command}"
     shortcut.WorkingDirectory = wdir
     shortcut.IconLocation = icon
     shortcut.save()
+
+def create_symlink(target, link_name):
+    if os.path.exists(link_name):
+        os.remove(link_name)
+    os.symlink(target, link_name)
 
 def run_command(command):
     try:
@@ -727,28 +730,199 @@ def run_command(command):
 
 def add_host_key_to_known_hosts(host_ip):
     try:
-        known_hosts_path = os.path.expanduser("~/.ssh/known_hosts")
+        known_hosts_path = os.path.expanduser(format_path("~/.ssh/known_hosts"))
         known_hosts_path = format_path(known_hosts_path)
         # Remove the existing host key if it exists
         remove_command = f'ssh-keygen -R {host_ip}'
-        print(f"Running command: {remove_command}")
+        logger.debug(f"Running command: {remove_command}")
         output, error = run_command(remove_command)
         if error and 'not found' not in error:
             raise Exception(error)
-        print(f"Command output: {output}")
+        logger.debug(f"Command output: {output}")
 
         # Add the new host key
         add_command = f'ssh-keyscan -H {host_ip} >> "{known_hosts_path}"'
-        print(f"Running command: {add_command}")
+        logger.debug(f"Running command: {add_command}")
         output, error = run_command(add_command)
         if error:
             raise Exception(error)
-        print(f"Command output: {output}")
+        logger.debug(f"Command output: {output}")
     except Exception as e:
-        print("")
+        logger.debug("")
 
-def create_server(server_name, server_type_id, image, location, firewall_id, ssh_key_name):
-    global api_key, global_passphrase
+def install_nodectl(host_ip, private_key_path):
+    global ssh_shortcut_path, sftp_shortcut_path, folder_path, server_name
+
+    if DEBUG_MODE:
+        # Set up logging for Paramiko
+        paramiko.util.log_to_file('hetzner_debug.log')
+
+        # Define the handler to capture Paramiko logs
+        class ParamikoLogHandler(logging.Handler):
+            def emit(self, record):
+                log_entry = self.format(record)
+                logger.debug(log_entry)
+
+        # Add the Paramiko log handler
+        paramiko_log_handler = ParamikoLogHandler()
+        paramiko_log_handler.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(asctime)s %(levellevel): %(message)s')
+        paramiko_log_handler.setFormatter(formatter)
+        paramiko_logger = paramiko.util.get_logger('paramiko')
+        paramiko_logger.addHandler(paramiko_log_handler)
+        paramiko_logger.setLevel(logging.DEBUG)
+        paramiko_logger.propagate = False
+
+    # Prompt the user to select the network
+    print("Please choose the network to set up for this node:")
+    print("M) MainNet")
+    print("I) IntegrationNet")
+    print("T) TestNet")
+    network_choice = input("Enter your choice: ").upper()
+
+    if network_choice == 'M':
+        network = 'mainnet'
+        profile = 'dag-l0'
+    elif network_choice == 'I':
+        network = 'integrationnet'
+        profile = 'intnet-l0'
+    elif network_choice == 'T':
+        network = 'testnet'
+        profile = 'dag-l0'
+    else:
+        print("Invalid choice. Exiting nodectl installation.")
+        return
+    print("")
+
+    # Prompt for P12 file
+    use_p12 = input("Do you have a P12 file to import? (y/n): ").lower()
+    p12file = None
+    formatted_p12file = ""
+    if use_p12 == 'y':
+        while True:
+            p12file = input("Enter the full path to your P12 file or type 'c' to cancel: ").strip().strip('"')
+            if p12file.lower() == 'c':
+                p12file = None
+                break
+            formatted_p12file = format_path(p12file)
+            if os.path.isfile(formatted_p12file):
+                logger.debug(f"File found: {formatted_p12file}")
+                break
+            else:
+                print(f"Cannot find the P12 file at: {formatted_p12file}. The path to the P12 file is incorrect. Try again or type 'c' to cancel.")
+    print("")
+
+    # Prompt the user for the node username
+    nodeuser = input("Enter the username for your node [default: nodeadmin]: ").strip()
+    if not nodeuser:
+        nodeuser = "nodeadmin"
+    print("")
+
+    add_host_key_to_known_hosts(host_ip)
+
+    # SFTP Upload using Paramiko
+    if p12file:
+        # Prompt for the SSH passphrase if needed
+        ssh_passphrase = getpass.getpass("Enter the SSH passphrase for your private key (leave blank if none): ")
+        try:
+            transport = paramiko.Transport((host_ip, 22))
+            transport.connect(username='root', pkey=paramiko.RSAKey.from_private_key_file(private_key_path, password=ssh_passphrase))
+            sftp = paramiko.SFTPClient.from_transport(transport)
+            sftp.put(formatted_p12file, '/root/{}'.format(os.path.basename(formatted_p12file)))
+            sftp.close()
+            transport.close()
+            print(Fore.LIGHTGREEN_EX + f"Successfully uploaded P12 file: " + Style.RESET_ALL)
+            print(f"{formatted_p12file}")
+            print("")
+        except Exception as e:
+            print(f"Failed to upload P12 file: {str(e)}")
+            print("")
+            return
+    
+    # Construct the full command
+    if p12file:
+        commands = (
+            f"sudo wget -N https://github.com/stardustcollective/nodectl/releases/download/v2.14.1/nodectl_x86_64 -P /usr/local/bin -O /usr/local/bin/nodectl && "
+            f"sudo chmod +x /usr/local/bin/nodectl && "
+            f"sudo nodectl install --quick-install --user {nodeuser} --p12-migration-path '/root/{os.path.basename(formatted_p12file)}' --cluster-config {network} --confirm && "
+            f"sudo nodectl execute_starchiver -p {profile} --confirm && "
+            f"sudo nodectl upgrade --ni"
+        )
+    else:
+        commands = (
+            f"sudo wget -N https://github.com/stardustcollective/nodectl/releases/download/v2.14.1/nodectl_x86_64 -P /usr/local/bin -O /usr/local/bin/nodectl && "
+            f"sudo chmod +x /usr/local/bin/nodectl && "
+            f"sudo nodectl install --quick-install --user {nodeuser} --cluster-config {network} --confirm && "
+            f"sudo nodectl execute_starchiver -p {profile} --confirm && "
+            f"sudo nodectl upgrade --ni"
+        )
+
+    # Instructions for the user
+    print(Fore.YELLOW + f"To install nodectl on your server, follow these steps:\n")
+    if ssh_shortcut_path:
+        print(f'1. Open the shortcut located at: ' + Fore.LIGHTCYAN_EX + '"' + ssh_shortcut_path + '"' + Style.RESET_ALL)
+    else:
+        print("Error: SSH shortcut path is not set.")
+        return
+    print(Fore.YELLOW + f"2. Once connected, enter the SSH passphrase to authenticate access to the server.")
+    print(f"3. Copy and paste the following command to install nodectl:\n" + Style.RESET_ALL)
+    print(Fore.LIGHTCYAN_EX + f"{commands}\n" + Style.RESET_ALL)
+    print(Fore.YELLOW + f'\nConfiguration and shortcuts saved to: "' + Fore.LIGHTWHITE_EX + folder_path + Fore.YELLOW + '"' + Style.RESET_ALL)
+    print("")
+
+    # Add the new details to the config file
+    config_content = f"\n\nInstall your node after logging in with root and running the following command...\n\n{commands}\n"
+
+    config_path = os.path.join(folder_path, f"{server_name}_config.txt")
+    with open(config_path, 'a') as config_file:
+        config_file.write(config_content + '\n')
+
+    # Ask the user if they want to launch the terminal to access the server
+    launch_terminal = input("Do you want the script to launch the terminal to access the server? (y/n): ").lower()
+    if launch_terminal == 'y':
+        try:
+            if os.name == 'nt':
+                subprocess.Popen(['cmd.exe', '/c', 'start', '', ssh_shortcut_path], shell=True)
+            elif os.name == 'posix' and platform.system() == 'Darwin':
+                subprocess.Popen(['open', ssh_shortcut_path], shell=True)
+            else:
+                subprocess.Popen(['gnome-terminal', '--', ssh_command_nodeuser], shell=True)
+        except Exception as e:
+            print(f"Failed to launch the terminal: {e}")
+    print("")
+
+    # Create SSH shortcut
+    if os.name == 'nt':
+        create_shortcut(f'ssh -i {private_key_path} {nodeuser}@{host_ip}', folder_path, f'{folder_path}\\{server_name}_SSH_({nodeuser}).lnk', 'C:\\Windows\\System32\\shell32.dll,135', nodeuser)
+        create_shortcut(f'sftp -i {private_key_path} {nodeuser}@{host_ip}', folder_path, f'{folder_path}\\{server_name}_SFTP_({nodeuser}).lnk', 'C:\\Windows\\System32\\shell32.dll,146', nodeuser)
+    elif os.name == 'posix' and platform.system() == 'Darwin':
+        ssh_symlink_path = os.path.join(folder_path, f"SSH to {server_name}")
+        sftp_symlink_path = os.path.join(folder_path, f"SFTP to {server_name}")
+        create_symlink(ssh_command_nodeuser, ssh_symlink_path)
+        create_symlink(sftp_command_nodeuser, sftp_symlink_path)
+    
+    private_key_path = format_path(private_key_path)
+    ssh_command_nodeuser = f"ssh -i {private_key_path} {nodeuser}@{host_ip}"
+    sftp_command_nodeuser = f"sftp -i {private_key_path} {nodeuser}@{host_ip}"
+    
+
+    print("Commands and shortcuts to access your server (Post-NodeCTL install):")
+    print(Fore.LIGHTCYAN_EX + f'SSH Command:    {ssh_command_nodeuser}')
+    print(f'SFTP Command:   {sftp_command_nodeuser}')
+    print("")
+    print(f'SSH Shortcut:    {folder_path}\\{server_name}_SSH_({nodeuser}).lnk')
+    print(f'SFTP Shortcut:   {folder_path}\\{server_name}_SFTP_({nodeuser}).lnk' + Style.RESET_ALL)
+
+    # Add the new details to the config file
+    config_content = f"\nCommands to access your server (Post-NodeCTL Installation):\nSSH Command:    {ssh_command_nodeuser}\nSFTP Command:   {sftp_command_nodeuser}\n"
+
+    config_path = os.path.join(folder_path, f"{server_name}_config.txt")
+    with open(config_path, 'a') as config_file:
+        config_file.write(config_content + '\n')
+
+def create_server(server_name_param, server_type_id, image, location, firewall_id, ssh_key_name):
+    global api_key, global_passphrase, ssh_shortcut_path, sftp_shortcut_path, folder_path, nodeuser, server_name
+    server_name = server_name_param
     url = 'https://api.hetzner.cloud/v1/servers'
     headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
     ssh_key_id, private_key_path = create_and_upload_ssh_key(ssh_key_name)
@@ -768,12 +942,13 @@ def create_server(server_name, server_type_id, image, location, firewall_id, ssh
     response = requests.post(url, headers=headers, json=data)
     if response.status_code == 201:
         server_data = response.json()
-        print('Server created successfully.')
+        print(Fore.LIGHTGREEN_EX + 'Server created successfully.' + Style.RESET_ALL)
+        print("")
         host_ip = server_data['server']['public_net']['ipv4']['ip']
-        print(f"Server Name:    {server_data['server']['name']}")
+        print(Fore.LIGHTCYAN_EX + f"Server Name:    {server_data['server']['name']}")
         print(f"Host IP:        {host_ip}")
         print("SSH Port:        22")
-        print(f"SSH Key Name:   {ssh_key_name}")
+        print(f"SSH Key Name:   {ssh_key_name}" + Style.RESET_ALL)
         print("")
 
         # Add the new host key to known_hosts
@@ -784,9 +959,9 @@ def create_server(server_name, server_type_id, image, location, firewall_id, ssh
         ssh_command = f"ssh -i {private_key_path} root@{host_ip}"
         sftp_command = f"sftp -i {private_key_path} root@{host_ip}"
 
-        print("Commands to access your server:")
-        print(f"SSH Command:    {ssh_command}")
-        print(f"SFTP Command:   {sftp_command}")
+        print("Commands to access your server (Pre-NodeCTL Installation):")
+        print(Fore.LIGHTCYAN_EX + f"SSH Command:    {ssh_command}")
+        print(f"SFTP Command:   {sftp_command}" + Style.RESET_ALL)
         print("")
 
         # Create a config file with the server details
@@ -796,10 +971,19 @@ Host IP:        {host_ip}
 SSH Port:       22
 SSH Key Name:   {ssh_key_name}
 
-Commands to access your server:
+Commands to access your server (Pre-NodeCTL):
 SSH Command:    {ssh_command}
 SFTP Command:   {sftp_command}
         """
+
+        # Path to save the config and shortcuts
+        folder_path = os.path.join(os.getcwd(), server_name)
+        folder_path = format_path(folder_path)
+        folder_path_root = format_path(folder_path+"/root")
+
+        # Paths for shortcuts
+        ssh_shortcut_path = os.path.join(folder_path_root, f"{server_name}_SSH_(root).lnk")
+        sftp_shortcut_path = os.path.join(folder_path_root, f"{server_name}_SFTP_(root).lnk")
 
         if os.name == 'nt':
             # Ensure pywin32 is installed on Windows
@@ -817,27 +1001,32 @@ SFTP Command:   {sftp_command}
                     subprocess.check_call([sys.executable, os.path.join(sys.exec_prefix, 'Scripts', 'pywin32_postinstall.py'), '-install'])
                 import win32com.client
 
-            # Path to save the config and shortcuts
-            folder_path = os.path.join(os.getcwd(), server_name)
-            folder_path = format_path(folder_path)
-            os.makedirs(folder_path, exist_ok=True)
+            os.makedirs(folder_path_root, exist_ok=True)
 
             # Config file path
             config_path = os.path.join(folder_path, f"{server_name}_config.txt")
             with open(config_path, 'w') as config_file:
                 config_file.write(config_content.strip())
 
-            # Paths for shortcuts
-            ssh_shortcut_path = os.path.join(folder_path, f"SSH to {server_name}.lnk")
-            sftp_shortcut_path = os.path.join(folder_path, f"SFTP to {server_name}.lnk")
-
             # Create SSH shortcut
-            create_shortcut(f'ssh -i {private_key_path} root@{host_ip}', folder_path, ssh_shortcut_path, 'C:\\Windows\\System32\\shell32.dll,135')
+            create_shortcut(f'ssh -i {private_key_path} root@{host_ip}', folder_path, ssh_shortcut_path, 'C:\\Windows\\System32\\shell32.dll,135', "root")
 
             # Create SFTP shortcut
-            create_shortcut(f'sftp -i {private_key_path} root@{host_ip}', folder_path, sftp_shortcut_path, 'C:\\Windows\\System32\\shell32.dll,146')
+            create_shortcut(f'sftp -i {private_key_path} root@{host_ip}', folder_path, sftp_shortcut_path, 'C:\\Windows\\System32\\shell32.dll,146', "root")
 
-            print(f"Configuration and shortcuts saved to: {folder_path}")
+            print(Fore.YELLOW + f'\nConfiguration and shortcuts saved to: "' + Fore.LIGHTWHITE_EX + folder_path + Fore.YELLOW + '"' + Style.RESET_ALL)
+            print("")
+            #print(f"Configuration and shortcuts saved to: {folder_path}")
+        elif os.name == 'posix' and platform.system() == 'Darwin':
+            # Paths for symlinks
+            ssh_symlink_path = os.path.join(folder_path, f"SSH to {server_name}")
+            sftp_symlink_path = os.path.join(folder_path, f"SFTP to {server_name}")
+
+            # Create symlinks
+            create_symlink(ssh_command, ssh_symlink_path)
+            create_symlink(sftp_command, sftp_symlink_path)
+
+            print(f"Configuration and symlinks saved to: {folder_path}")
         else:
             config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), f"{server_name}_config.txt")
             config_path = format_path(config_path)
@@ -846,6 +1035,13 @@ SFTP Command:   {sftp_command}
 
             print(f"Configuration saved to: {config_path}")
             print("")
+
+        # Ask if the user wants to install nodectl
+        install_nodectl_decision = input("Do you want to install nodectl on the server? (y/n): ").lower()
+        if install_nodectl_decision == 'y':
+            install_nodectl(host_ip, private_key_path)
+
+        print("")
 
         if os.name == 'nt':
             export_decision = input("Do you want to export the Server details to PuTTY? (y/n): ").lower()
@@ -977,7 +1173,7 @@ def check_for_updates():
 # Main interaction and menu
 def main_menu():
     logging.debug("Entered main_menu function")
-    global api_key
+    global api_key, nodeuser
     if '--no-update' in sys.argv:
         logger.handlers.clear()
         logger.addHandler(console_handler)
@@ -1046,8 +1242,9 @@ def main_menu():
             print("By default You can just press ENTER to choose it.")
             print("Or you are welcome to type a different OS if instructions have changed." + Style.RESET_ALL)
             print("")
-            image = input("Enter the image you want to use \n"
-                          f"  [default: ubuntu-22.04]: ") or "ubuntu-22.04"
+            ## image = input("Enter the image you want to use \n"
+            ##               f"  [default: ubuntu-22.04]: ") or "ubuntu-22.04"
+            image = "ubuntu-22.04"
             logging.debug(f"Server OS image: {image}")
 
             # Server location
@@ -1192,7 +1389,6 @@ def main_menu():
             print(f"-===[ SERVER CREATION ]===-")
             print("")
             create_server(server_name, server_type_id, image, location, firewall_id, ssh_key_name)
-            print("")
             pause_and_return()
         elif choice == 'X':
             logging.debug("User selected to exit")
