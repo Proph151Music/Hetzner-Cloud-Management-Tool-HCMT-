@@ -11,7 +11,9 @@ import select
 from cryptography.utils import CryptographyDeprecationWarning
 
 # Version of the script
-version = "0.2.0.0"
+version = "0.2.5.0"
+
+easy_server = False
 
 def remove_updater():
     updater_script = 'updater.py'
@@ -812,10 +814,15 @@ def install_nodectl(host_ip, private_key_path):
                 print(f"Cannot find the P12 file at: {formatted_p12file}. The path to the P12 file is incorrect. Try again or type 'c' to cancel.")
     print("")
 
-    # Prompt the user for the node username
-    nodeuser = input("Enter the username for your node [default: nodeadmin]: ").strip()
-    if not nodeuser:
+    if easy_server:
         nodeuser = "nodeadmin"
+    else:
+        # Prompt the user for the node username
+        nodeuser = input("Enter the username for your node [default: nodeadmin]: ").strip()
+        if not nodeuser:
+            nodeuser = "nodeadmin"
+
+    print(Fore.LIGHTGREEN_EX + f"Cloud Server Username: " + Style.RESET_ALL + nodeuser)
     print("")
 
     add_host_key_to_known_hosts(host_ip)
@@ -921,7 +928,7 @@ def install_nodectl(host_ip, private_key_path):
         config_file.write(config_content + '\n')
 
 def create_server(server_name_param, server_type_id, image, location, firewall_id, ssh_key_name):
-    global api_key, global_passphrase, ssh_shortcut_path, sftp_shortcut_path, folder_path, nodeuser, server_name
+    global api_key, global_passphrase, ssh_shortcut_path, sftp_shortcut_path, folder_path, nodeuser, server_name, easy_server
     server_name = server_name_param
     url = 'https://api.hetzner.cloud/v1/servers'
     headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
@@ -1172,8 +1179,8 @@ def check_for_updates():
 
 # Main interaction and menu
 def main_menu():
+    global api_key, nodeuser, easy_server
     logging.debug("Entered main_menu function")
-    global api_key, nodeuser
     if '--no-update' in sys.argv:
         logger.handlers.clear()
         logger.addHandler(console_handler)
@@ -1191,12 +1198,130 @@ def main_menu():
     ### print("F) Setup Firewall")
     ### print("S) Create SSH Key Pair")
     print("C) Create Cloud Server")
+    print("E) Easy Cloud Server Creation")
     print("X) Exit")
     choice = input("\nEnter your choice: ").upper()
     logging.debug(f"User choice: {choice}")
 
     try:
-        if choice == 'F':
+        if choice == 'E':
+            easy_server = True
+            ## create_cloud_server()
+
+
+            logging.debug("User selected to create cloud server")
+            # Server Name
+            print("")
+            print("Don't forget to tip the bar tender!"+ Style.RESET_ALL)
+            print("----> " + Fore.YELLOW + "DAG0Zyq8XPnDKRB3wZaFcFHjL4seCLSDtHbUcYq3" + Style.RESET_ALL)
+            print("")
+            print(f"-===[ SERVER NAME ]===-")
+            print("")
+            print(Fore.CYAN + "A valid server name must be a non-empty string, ")
+            print("contain only alphanumeric characters and hyphens, not start or end with a hyphen." + Style.RESET_ALL)
+            print("")
+            while True:
+                server_name = input("Enter the server name: ")
+                if is_valid_hostname(server_name):
+                    if check_server_name_availability(server_name):
+                        break
+                    else:
+                        print(f"Server name '{server_name}' is already used. Please choose a different name.")
+                else:
+                    print(Fore.LIGHTRED_EX + "Invalid server name. A valid server name must be a non-empty string, ")
+                    print("contain only alphanumeric characters and hyphens, not start or end with a hyphen." + Style.RESET_ALL)
+            logging.debug(f"Server name: {server_name}")
+
+            image = "ubuntu-22.04"
+            logging.debug(f"Server OS image: {image}")
+
+            # Server location
+            print("")
+            print(f"-===[ SERVER LOCATION ]===-")
+            print("")
+            print(Fore.CYAN + "Here you can select the location where your server will reside.")
+            print("By default You can just press ENTER to choose Ashburn, Virgina (ash).")
+            print("Or you can type a different location code that you see highlighted in the list below." + Style.RESET_ALL)
+            print("")
+            locations = fetch_and_display_locations()
+            logging.debug(f"Locations fetched: {locations}")
+            if not locations:
+                logging.error("No locations available.")
+                print("No locations available.")
+                input("Press Enter to exit...")
+                sys.exit()
+            print("")
+            default_location_name = 'ash'
+            location_name = input(f"Enter the name of the location you want to use \n"
+                                  f"  [default: {default_location_name}]: ") or default_location_name
+            # Find the ID of the chosen location
+            chosen_location = next((loc for loc in locations if loc['name'] == location_name), None)
+            if chosen_location:
+                location_id = chosen_location['id']
+            else:
+                print(f"Location '{location_name}' not found. Defaulting to 'ash'.")
+                chosen_location = next(loc for loc in locations if loc['name'] == 'ash')
+                location_id = chosen_location['id'] if chosen_location else None
+
+            location = location_name if chosen_location else 'ash'
+            logging.debug(f"Chosen location: {location}")
+
+            # Server Specs
+            # Fetch and display server specs
+            print("")
+            print(f"-===[ SERVER SPECS ]===-")
+            print("")
+            print(Fore.CYAN + "You can either press enter to choose the default server specs shown ")
+            print("or you can type the code to select different specs.")
+            print("")
+            print("Do NOT choose any codes that have an `a` in the code. This means `ARM chip` and is not compatible at this time." + Style.RESET_ALL)
+            print("")
+            server_types = fetch_and_display_server_types()
+            logging.debug(f"Server types fetched: {server_types}")
+            if not server_types:
+                logging.error("No server types available.")
+                print("No server types available.")
+                input("Press Enter to exit...")
+                sys.exit()
+            print("")
+            server_type_name = input("Enter the name of the server type you want to use \n"
+                                     f"  [default: cpx51]: ") or "cpx51"
+            chosen_server_type = next((st for st in server_types if st['name'] == server_type_name), None)
+            if chosen_server_type:
+                server_type_id = chosen_server_type['id']
+            else:
+                print(f"Server type '{server_type_name}' not found. Defaulting to 'cpx51'.")
+                chosen_server_type = next((st for st in server_types if st['name'] == 'cpx51'), None)
+                server_type_id = chosen_server_type['id'] if chosen_server_type else None
+            logging.debug(f"Chosen server type: {server_type_name}")
+
+            # Server firewall
+            print("")
+            print(f"-===[ SERVER FIREWALL ]===-")
+            print("")
+
+            firewall_name = re.sub(r"[^a-zA-Z0-9]", "-", server_name.lower()) + "-fw"
+            print(Fore.LIGHTGREEN_EX + f"Firewall Name: " + Style.RESET_ALL + firewall_name)
+            inbound_ports = '9000-9001,9010-9011'
+            print(Fore.LIGHTGREEN_EX + f"Inbound Ports: " + Style.RESET_ALL + inbound_ports)
+            firewall_id = create_or_update_firewall(firewall_name, inbound_ports)
+            logging.debug(f"Chosen firewall ID: {firewall_id}")
+
+            # Server SSH key
+            print("")
+            print(f"-===[ SERVER SSH KEY ]===-")
+            print("")
+
+            ssh_key_name = re.sub(r"[^a-zA-Z0-9]", "-", server_name.lower()) + "-ssh"
+            print(Fore.LIGHTGREEN_EX + f"SSH Key Pair: " + Style.RESET_ALL + ssh_key_name)
+            ssh_key_id = create_and_upload_ssh_key(ssh_key_name)
+
+            print("")
+            print(f"-===[ SERVER CREATION ]===-")
+            print("")
+            create_server(server_name, server_type_id, image, location, firewall_id, ssh_key_name)
+            pause_and_return()
+        elif choice == 'F':
             logging.debug("User selected to setup firewall")
             clear_screen()
             firewall_name = input("Enter the firewall name [DAG Validator Node]:") or 'DAG Validator Node'
@@ -1211,6 +1336,7 @@ def main_menu():
             print("")
             pause_and_return()
         elif choice == 'C':
+            easy_server = False
             logging.debug("User selected to create cloud server")
             # Server Name
             print("")
@@ -1235,13 +1361,13 @@ def main_menu():
             logging.debug(f"Server name: {server_name}")
 
             # Server OS
-            print("")
-            print(f"-===[ SERVER OPERATING SYSTEM ]===-")
-            print("")
-            print(Fore.CYAN + "Ubuntu-22.04 is the recommended OS. ")
-            print("By default You can just press ENTER to choose it.")
-            print("Or you are welcome to type a different OS if instructions have changed." + Style.RESET_ALL)
-            print("")
+            ## print("")
+            ## print(f"-===[ SERVER OPERATING SYSTEM ]===-")
+            ## print("")
+            ## print(Fore.CYAN + "Ubuntu-22.04 is the recommended OS.")
+            ## print("By default You can just press ENTER to choose it.")
+            ## print("Or you are welcome to type a different OS if instructions have changed." + Style.RESET_ALL)
+            ## print("")
             ## image = input("Enter the image you want to use \n"
             ##               f"  [default: ubuntu-22.04]: ") or "ubuntu-22.04"
             image = "ubuntu-22.04"
@@ -1297,13 +1423,13 @@ def main_menu():
                 sys.exit()
             print("")
             server_type_name = input("Enter the name of the server type you want to use \n"
-                                     f"  [default: cpx41]: ") or "cpx41"
+                                     f"  [default: cpx51]: ") or "cpx51"
             chosen_server_type = next((st for st in server_types if st['name'] == server_type_name), None)
             if chosen_server_type:
                 server_type_id = chosen_server_type['id']
             else:
-                print(f"Server type '{server_type_name}' not found. Defaulting to 'cpx41'.")
-                chosen_server_type = next((st for st in server_types if st['name'] == 'cpx41'), None)
+                print(f"Server type '{server_type_name}' not found. Defaulting to 'cpx51'.")
+                chosen_server_type = next((st for st in server_types if st['name'] == 'cpx51'), None)
                 server_type_id = chosen_server_type['id'] if chosen_server_type else None
             logging.debug(f"Chosen server type: {server_type_name}")
 
