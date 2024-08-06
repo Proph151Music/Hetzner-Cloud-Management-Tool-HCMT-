@@ -1,34 +1,65 @@
-import platform
-import logging
-import time
-import sys
-import subprocess
-import os
-import hashlib
 import warnings
-import getpass
-import select
 from cryptography.utils import CryptographyDeprecationWarning
-
-# Version of the script
-version = "0.2.7.5"
-
-easy_server = False
-
-def remove_updater():
-    updater_script = 'updater.py'
-    if os.path.exists(updater_script):
-        try:
-            os.remove(updater_script)
-            logging.debug(f"{updater_script} removed successfully.")
-        except Exception as e:
-            logging.error(f"Failed to remove {updater_script}: {e}")
-
-if '--no-update' in sys.argv:
-    remove_updater()
 
 # Suppress specific deprecation warnings
 warnings.filterwarnings("ignore", category=CryptographyDeprecationWarning)
+
+import sys
+import subprocess
+import logging
+import platform
+import time
+import os
+import hashlib
+import getpass
+import select
+import requests
+import paramiko
+import re
+from colorama import Fore, Style
+
+# Version of the script
+version = "0.2.7.7"
+easy_server = False
+
+# Function to install missing packages
+def install_package(package_name):
+    try:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", package_name])
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to install package {package_name}: {e}")
+        sys.exit(1)
+
+def install_required_packages():
+    if os.name == 'nt':
+        # Ensure pywin32 is installed on Windows
+        try:
+            import win32com.client
+        except ImportError:
+            install_package('pywin32')
+            # Initialize pywin32 after installation
+            try:
+                from pywin32_postinstall import install
+                install()
+            except ImportError:
+                subprocess.check_call([sys.executable, os.path.join(sys.exec_prefix, 'Scripts', 'pywin32_postinstall.py'), '-install'])
+            import win32com.client
+    logging.debug("Entered install_required_packages function")
+    required_packages = ["requests", "colorama", "paramiko>=3.0.0", "cryptography>=39.0.0"]
+    for package in required_packages:
+        try:
+            __import__(package.split('>=')[0])
+            logging.debug(f"Package '{package}' is already installed.")
+        except ImportError:
+            logging.info(f"Installing package '{package}'...")
+            subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+            logging.info(f"Package '{package}' installed.")
+        except Exception:
+            logging.info(f"Reinstalling package '{package}'...")
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", package])
+            logging.info(f"Package '{package}' reinstalled.")
+
+install_required_packages()
 
 DEBUG_MODE = False
 
@@ -91,11 +122,11 @@ def download_file(url, save_path):
     else:
         logger.error(f"Failed to download file from {url}")
         raise Exception("Download failed")
-
+    
 def compare_files(file_path1, file_path2):
     with open(file_path1, 'rb') as f1, open(file_path2, 'rb') as f2:
         return f1.read() == f2.read()
-
+    
 def create_updater_script():
     updater_script_content = '''
 import os
@@ -202,53 +233,6 @@ if __name__ == "__main__":
     with open('updater.py', 'w') as f:
         f.write(updater_script_content)
 
-def setup_virtual_environment():
-    logging.debug("Entered setup_virtual_environment function")
-    venv_path = os.path.join(os.getcwd(), "hetzner_venv")
-    if not os.path.exists(venv_path):
-        logging.info("Creating virtual environment...")
-        subprocess.check_call([sys.executable, "-m", "venv", venv_path])
-        logging.info("Virtual environment created.")
-    else:
-        logging.info("Virtual environment already exists.")
-
-    # Activate the virtual environment
-    activate_script = os.path.join(venv_path, "bin", "activate")
-    os.environ["VIRTUAL_ENV"] = venv_path
-    os.environ["PATH"] = os.path.join(venv_path, "bin") + os.pathsep + os.environ["PATH"]
-    logging.info("Virtual environment activated.")
-
-def install_required_packages():
-    if os.name == 'nt': 
-        # Ensure pywin32 is installed on Windows
-        try:
-            import win32com.client
-        except ImportError:
-            def install_package(package_name):
-                subprocess.check_call([sys.executable, "-m", "pip", "install", package_name])
-            install_package('pywin32')
-            # Initialize pywin32 after installation
-            try:
-                from pywin32_postinstall import install
-                install()
-            except ImportError:
-                subprocess.check_call([sys.executable, os.path.join(sys.exec_prefix, 'Scripts', 'pywin32_postinstall.py'), '-install'])
-            import win32com.client
-    logging.debug("Entered install_required_packages function")
-    required_packages = ["requests", "colorama", "paramiko>=3.0.0", "cryptography>=39.0.0"]
-    for package in required_packages:
-        try:
-            __import__(package.split('>=')[0])
-            logging.debug(f"Package '{package}' is already installed.")
-        except ImportError:
-            logging.info(f"Installing package '{package}'...")
-            subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-            logging.info(f"Package '{package}' installed.")
-        except Exception:
-            logging.info(f"Reinstalling package '{package}'...")
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", package])
-            logging.info(f"Package '{package}' reinstalled.")
-
 def install_python():
     logging.debug("Entered install_python function")
     if is_frozen:
@@ -285,52 +269,6 @@ def install_python():
         logging.error("Python installation check failed.")
 
 install_python()
-
-def install_and_reload(package):
-    logging.debug(f"Entered install_and_reload function for package: {package}")
-    if is_frozen:
-        logging.debug(f"Skipping install_and_reload for package {package} in frozen mode")
-        return
-
-    package_name = package.split('>=')[0]
-    try:
-        logging.debug(f"Attempting to import {package_name}")
-        __import__(package_name)
-        logging.debug(f"Successfully imported {package_name}")
-    except ImportError:
-        logging.debug(f"{package_name} not found, attempting to install")
-        subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-        logging.debug(f"Successfully installed {package_name}")
-    finally:
-        logging.debug(f"Reloading or importing {package_name}")
-        import importlib
-        if package_name in sys.modules:
-            globals()[package_name] = importlib.reload(sys.modules[package_name])
-        else:
-            globals()[package_name] = importlib.import_module(package_name)
-        logging.debug(f"Successfully reloaded or imported {package_name}")
-
-# List of required packages
-required_packages = ["requests", "colorama", "paramiko>=3.0.0", "cryptography>=39.0.0"]
-
-# Check and install missing packages, then import or reload them
-for package in required_packages:
-    install_and_reload(package)
-
-import getpass
-logging.debug("Imported getpass")
-import re
-logging.debug("Imported re")
-import requests
-logging.debug("Imported requests")
-import json
-logging.debug("Imported json")
-import time
-logging.debug("Imported time")
-import paramiko
-logging.debug("Imported paramiko")
-from colorama import Fore, Style
-logging.debug("Imported colorama")
 
 def make_api_call(url, headers):
     """Utility function to make API calls and handle failures."""
@@ -386,7 +324,7 @@ def create_and_upload_ssh_key(ssh_key_name=None):
     print("")
 
     while True:
-        global_passphrase = getpass.getpass("Enter a passphrase for your SSH key (cannot be blank): ")
+        global_passphrase = getpass.getpass("Enter a passphrase for your new SSH key (cannot be blank): ")
         if not global_passphrase:
             print("The passphrase cannot be blank.")
             continue
@@ -603,8 +541,8 @@ def create_or_update_firewall(firewall_name, inbound_ports):
                         f"  [default: y]: ").strip().lower() or 'y'
     if restrict_ssh == 'y':
         print("")
-        user_input = input(f"Enter additional IP addresses separated by commas,\n" +
-                           f"or press enter to use only your existing Internet IP \n" +
+        user_input = input(f"Enter different IP addresses separated by commas,\n" +
+                           f"or press enter to use only your existing local Internet IP \n" +
                            f"  [default: {public_ip}]: ").strip() or public_ip
         source_ips = [ip.strip() if '/' in ip else ip.strip() + '/32' for ip in user_input.split(',')]
     else:
@@ -642,14 +580,20 @@ def create_or_update_firewall(firewall_name, inbound_ports):
         print("Error details:", response.json())
         return None
 
-def fetch_and_display_server_types():
+def fetch_and_display_server_types(location_name):
     global api_key
     url = 'https://api.hetzner.cloud/v1/server_types'
     headers = {'Authorization': f'Bearer {api_key}'}
     response = requests.get(url, headers=headers)
     if response.status_code == 200:
         server_types = response.json().get('server_types', [])
-        sorted_server_types = sorted(server_types, key=lambda x: float(x['prices'][0]['price_monthly']['net']))
+        # Filter server types based on location and architecture
+        filtered_server_types = [
+            server for server in server_types
+            if any(price['location'] == location_name for price in server['prices'])
+            and server['architecture'] in ['x86', 'x64']
+        ]
+        sorted_server_types = sorted(filtered_server_types, key=lambda x: float(x['prices'][0]['price_monthly']['net']))
         for server in sorted_server_types:
             name = Fore.CYAN + Style.BRIGHT + server['name'] + Style.RESET_ALL
             monthly_price = round(float(server['prices'][0]['price_monthly']['net']), 2)
@@ -765,7 +709,8 @@ def get_latest_nodectl_version():
         return nodectl_version
     
 def install_nodectl(host_ip, private_key_path):
-    global ssh_shortcut_path, sftp_shortcut_path, folder_path, server_name
+    global ssh_shortcut_path, sftp_shortcut_path, folder_path, server_name, global_passphrase
+    ssh_passphrase = global_passphrase
 
     if DEBUG_MODE:
         # Set up logging for Paramiko
@@ -780,7 +725,7 @@ def install_nodectl(host_ip, private_key_path):
         # Add the Paramiko log handler
         paramiko_log_handler = ParamikoLogHandler()
         paramiko_log_handler.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('%(asctime)s %(levellevel): %(message)s')
+        formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
         paramiko_log_handler.setFormatter(formatter)
         paramiko_logger = paramiko.util.get_logger('paramiko')
         paramiko_logger.addHandler(paramiko_log_handler)
@@ -842,7 +787,9 @@ def install_nodectl(host_ip, private_key_path):
     # SFTP Upload using Paramiko
     if p12file:
         # Prompt for the SSH passphrase if needed
-        ssh_passphrase = getpass.getpass("Enter the SSH passphrase for your private key (leave blank if none): ")
+        if not ssh_passphrase:
+            ssh_passphrase = getpass.getpass("Enter the SSH passphrase for your private key (leave blank if none): ")
+
         try:
             transport = paramiko.Transport((host_ip, 22))
             transport.connect(username='root', pkey=paramiko.RSAKey.from_private_key_file(private_key_path, password=ssh_passphrase))
@@ -870,6 +817,13 @@ def install_nodectl(host_ip, private_key_path):
             f"sudo nodectl execute_starchiver -p {profile} --confirm && "
             f"sudo nodectl upgrade --ni" + Style.RESET_ALL
         )
+        commands_txt = (
+            f"sudo wget -N https://github.com/stardustcollective/nodectl/releases/download/" + nodectl_version + "/nodectl_x86_64 -P /usr/local/bin -O /usr/local/bin/nodectl && "
+            f"sudo chmod +x /usr/local/bin/nodectl && "
+            f"sudo nodectl install --quick-install --user {nodeuser} --p12-migration-path '/root/{os.path.basename(formatted_p12file)}' --cluster-config {network} --confirm && "
+            f"sudo nodectl execute_starchiver -p {profile} --confirm && "
+            f"sudo nodectl upgrade --ni"
+        )
     else:
         commands = (
             Fore.LIGHTGREEN_EX + f"sudo wget -N https://github.com/stardustcollective/nodectl/releases/download/" + Fore.LIGHTYELLOW_EX + nodectl_version + Style.RESET_ALL + Fore.LIGHTGREEN_EX + "/nodectl_x86_64 -P /usr/local/bin -O /usr/local/bin/nodectl && "
@@ -877,6 +831,13 @@ def install_nodectl(host_ip, private_key_path):
             f"sudo nodectl install --quick-install --user {nodeuser} --cluster-config {network} --confirm && "
             f"sudo nodectl execute_starchiver -p {profile} --confirm && "
             f"sudo nodectl upgrade --ni" + Style.RESET_ALL
+        )
+        commands_txt = (
+            f"sudo wget -N https://github.com/stardustcollective/nodectl/releases/download/" + nodectl_version + "/nodectl_x86_64 -P /usr/local/bin -O /usr/local/bin/nodectl && "
+            f"sudo chmod +x /usr/local/bin/nodectl && "
+            f"sudo nodectl install --quick-install --user {nodeuser} --cluster-config {network} --confirm && "
+            f"sudo nodectl execute_starchiver -p {profile} --confirm && "
+            f"sudo nodectl upgrade --ni"
         )
 
     # Instructions for the user
@@ -897,7 +858,28 @@ def install_nodectl(host_ip, private_key_path):
     print("")
 
     # Add the new details to the config file
-    config_content = f"\n\nInstall your node after logging in with root and running the following command...\n\n{commands}\n"
+    config_content = f"\n\nInstall your node after logging in with root and running the following command...\n\n{commands_txt}\n"
+
+    config_path = os.path.join(folder_path, f"{server_name}_config.txt")
+    with open(config_path, 'a') as config_file:
+        config_file.write(config_content + '\n')
+
+    # Create SSH shortcut
+    if os.name == 'nt':
+        create_shortcut(f'ssh -i {private_key_path} {nodeuser}@{host_ip}', folder_path, f'{folder_path}\\{server_name}_SSH_({nodeuser}).lnk', 'C:\\Windows\\System32\\shell32.dll,135', nodeuser)
+        create_shortcut(f'sftp -i {private_key_path} {nodeuser}@{host_ip}', folder_path, f'{folder_path}\\{server_name}_SFTP_({nodeuser}).lnk', 'C:\\Windows\\System32\\shell32.dll,146', nodeuser)
+    elif os.name == 'posix' and platform.system() == 'Darwin':
+        ssh_symlink_path = os.path.join(folder_path, f"SSH to {server_name}")
+        sftp_symlink_path = os.path.join(folder_path, f"SFTP to {server_name}")
+        create_symlink(ssh_command_nodeuser, ssh_symlink_path)
+        create_symlink(sftp_command_nodeuser, sftp_symlink_path)
+    
+    private_key_path = format_path(private_key_path)
+    ssh_command_nodeuser = f"ssh -i {private_key_path} {nodeuser}@{host_ip}"
+    sftp_command_nodeuser = f"sftp -i {private_key_path} {nodeuser}@{host_ip}"
+
+    # Add the new details to the config file
+    config_content = f"\nCommands to access your server (Post-NodeCTL Installation):\nSSH Command:    {ssh_command_nodeuser}\nSFTP Command:   {sftp_command_nodeuser}\n"
 
     config_path = os.path.join(folder_path, f"{server_name}_config.txt")
     with open(config_path, 'a') as config_file:
@@ -915,22 +897,7 @@ def install_nodectl(host_ip, private_key_path):
                 subprocess.Popen(['gnome-terminal', '--', ssh_command_nodeuser], shell=True)
         except Exception as e:
             print(f"Failed to launch the terminal: {e}")
-    print("")
-
-    # Create SSH shortcut
-    if os.name == 'nt':
-        create_shortcut(f'ssh -i {private_key_path} {nodeuser}@{host_ip}', folder_path, f'{folder_path}\\{server_name}_SSH_({nodeuser}).lnk', 'C:\\Windows\\System32\\shell32.dll,135', nodeuser)
-        create_shortcut(f'sftp -i {private_key_path} {nodeuser}@{host_ip}', folder_path, f'{folder_path}\\{server_name}_SFTP_({nodeuser}).lnk', 'C:\\Windows\\System32\\shell32.dll,146', nodeuser)
-    elif os.name == 'posix' and platform.system() == 'Darwin':
-        ssh_symlink_path = os.path.join(folder_path, f"SSH to {server_name}")
-        sftp_symlink_path = os.path.join(folder_path, f"SFTP to {server_name}")
-        create_symlink(ssh_command_nodeuser, ssh_symlink_path)
-        create_symlink(sftp_command_nodeuser, sftp_symlink_path)
-    
-    private_key_path = format_path(private_key_path)
-    ssh_command_nodeuser = f"ssh -i {private_key_path} {nodeuser}@{host_ip}"
-    sftp_command_nodeuser = f"sftp -i {private_key_path} {nodeuser}@{host_ip}"
-    
+    print("")    
 
     print("Commands and shortcuts to access your server (Post-NodeCTL install):")
     print(Fore.LIGHTCYAN_EX + f'SSH Command:    {ssh_command_nodeuser}')
@@ -938,13 +905,6 @@ def install_nodectl(host_ip, private_key_path):
     print("")
     print(f'SSH Shortcut:    {folder_path}\\{server_name}_SSH_({nodeuser}).lnk')
     print(f'SFTP Shortcut:   {folder_path}\\{server_name}_SFTP_({nodeuser}).lnk' + Style.RESET_ALL)
-
-    # Add the new details to the config file
-    config_content = f"\nCommands to access your server (Post-NodeCTL Installation):\nSSH Command:    {ssh_command_nodeuser}\nSFTP Command:   {sftp_command_nodeuser}\n"
-
-    config_path = os.path.join(folder_path, f"{server_name}_config.txt")
-    with open(config_path, 'a') as config_file:
-        config_file.write(config_content + '\n')
 
 def create_server(server_name_param, server_type_id, image, location, firewall_id, ssh_key_name):
     global api_key, global_passphrase, ssh_shortcut_path, sftp_shortcut_path, folder_path, nodeuser, server_name, easy_server
@@ -1291,11 +1251,9 @@ def main_menu():
             print(f"-===[ SERVER SPECS ]===-")
             print("")
             print(Fore.CYAN + "You can either press enter to choose the default server specs shown ")
-            print("or you can type the code to select different specs.")
+            print("or you can type the code to select different specs." + Style.RESET_ALL)
             print("")
-            print("Do NOT choose any codes that have an `a` in the code. This means `ARM chip` and is not compatible at this time." + Style.RESET_ALL)
-            print("")
-            server_types = fetch_and_display_server_types()
+            server_types = fetch_and_display_server_types(location_name)
             logging.debug(f"Server types fetched: {server_types}")
             if not server_types:
                 logging.error("No server types available.")
@@ -1429,27 +1387,36 @@ def main_menu():
             print(f"-===[ SERVER SPECS ]===-")
             print("")
             print(Fore.CYAN + "You can either press enter to choose the default server specs shown ")
-            print("or you can type the code to select different specs.")
+            print("or you can type the code to select different specs." + Style.RESET_ALL)
             print("")
-            print("Do NOT choose any codes that have an `a` in the code. This means `ARM chip` and is not compatible at this time." + Style.RESET_ALL)
-            print("")
-            server_types = fetch_and_display_server_types()
+            server_types = fetch_and_display_server_types(location_name)
             logging.debug(f"Server types fetched: {server_types}")
             if not server_types:
                 logging.error("No server types available.")
                 print("No server types available.")
                 input("Press Enter to exit...")
                 sys.exit()
+
+            # Default server type selection logic
+            default_server_type_name = None
+            if any(st['name'] == 'cx52' for st in server_types):
+                default_server_type_name = 'cx52'
+            elif any(st['name'] == 'cpx51' for st in server_types):
+                default_server_type_name = 'cpx51'
+                
             print("")
-            server_type_name = input("Enter the name of the server type you want to use \n"
-                                     f"  [default: cpx51]: ") or "cpx51"
-            chosen_server_type = next((st for st in server_types if st['name'] == server_type_name), None)
+            server_type_name = input(f"Enter the name of the server type you want to use \n"  
+                                     f" [default: {default_server_type_name if default_server_type_name else 'None'}]: ") or default_server_type_name
+            if default_server_type_name and server_type_name == default_server_type_name:
+                chosen_server_type = next(st for st in server_types if st['name'] == default_server_type_name)
+            else:
+                chosen_server_type = next((st for st in server_types if st['name'] == server_type_name), None)
+
             if chosen_server_type:
                 server_type_id = chosen_server_type['id']
             else:
-                print(f"Server type '{server_type_name}' not found. Defaulting to 'cpx51'.")
-                chosen_server_type = next((st for st in server_types if st['name'] == 'cpx51'), None)
-                server_type_id = chosen_server_type['id'] if chosen_server_type else None
+                print(f"Server type '{server_type_name}' not found. Exiting.")
+                sys.exit()
             logging.debug(f"Chosen server type: {server_type_name}")
 
             # Server firewall
@@ -1550,12 +1517,6 @@ if __name__ == "__main__":
         check_for_updates()
     try:
         logger.debug("Program started")
-        if sys.platform == 'darwin':
-            setup_virtual_environment()
-            install_required_packages()
-        else:
-            for package in required_packages:
-                install_and_reload(package)
         main_menu()
     except Exception as e:
         logger.error(f"An error occurred: {e}", exc_info=True)
