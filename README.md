@@ -66,7 +66,7 @@ By default Mac should already have Python installed.
    
     This command should run the hcmt.py file in a virtual environment:
     ```sh
-    python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt && python hcmt.py
+    python3 -m venv venv && source venv/bin/activate && python hcmt.py
     ```
     
 --------------------
