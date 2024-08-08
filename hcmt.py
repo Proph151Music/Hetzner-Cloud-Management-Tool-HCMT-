@@ -1,33 +1,27 @@
-import warnings
-from cryptography.utils import CryptographyDeprecationWarning
-
-# Suppress specific deprecation warnings
-warnings.filterwarnings("ignore", category=CryptographyDeprecationWarning)
+# Version of the script
+version = "0.2.8.0"
 
 import sys
 import subprocess
-import logging
-import platform
-import time
 import os
-import hashlib
-import getpass
-import select
-import requests
-import paramiko
-import re
-from colorama import Fore, Style
-
-# Version of the script
-version = "0.2.7.7"
-easy_server = False
+import logging
 
 # Function to install missing packages
 def install_package(package_name):
     try:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", package_name])
+        print(f"Installing {package_name} package...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", package_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except subprocess.CalledProcessError as e:
         print(f"Failed to install package {package_name}: {e}")
+        sys.exit(1)
+
+# Function to restart the script
+def restart_script():
+    try:
+        # print("Restarting script...")
+        subprocess.check_call([sys.executable] + sys.argv)
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to restart script: {e}")
         sys.exit(1)
 
 def install_required_packages():
@@ -37,29 +31,67 @@ def install_required_packages():
             import win32com.client
         except ImportError:
             install_package('pywin32')
-            # Initialize pywin32 after installation
+            # Try running the post-install script for pywin32
             try:
-                from pywin32_postinstall import install
-                install()
-            except ImportError:
-                subprocess.check_call([sys.executable, os.path.join(sys.exec_prefix, 'Scripts', 'pywin32_postinstall.py'), '-install'])
-            import win32com.client
+                subprocess.check_call([sys.executable, "-m", "pywin32_postinstall", "-install"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                restart_script()
+            except subprocess.CalledProcessError as e:
+                # print(f"Failed to run pywin32_postinstall: {e}")
+                restart_script()
+            # Verify installation
+            try:
+                import win32com.client
+            except ImportError as e:
+                print(f"Failed to import win32com.client after installation: {e}")
+                sys.exit(1)
+
     logging.debug("Entered install_required_packages function")
     required_packages = ["requests", "colorama", "paramiko>=3.0.0", "cryptography>=39.0.0"]
     for package in required_packages:
+        package_name = package.split('>=')[0]
         try:
-            __import__(package.split('>=')[0])
-            logging.debug(f"Package '{package}' is already installed.")
+            __import__(package_name)
+            logging.debug(f"Package '{package_name}' is already installed.")
         except ImportError:
             logging.info(f"Installing package '{package}'...")
-            subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+            install_package(package)
             logging.info(f"Package '{package}' installed.")
         except Exception:
             logging.info(f"Reinstalling package '{package}'...")
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", package])
+            install_package(package + "--upgrade")
             logging.info(f"Package '{package}' reinstalled.")
 
 install_required_packages()
+
+import warnings
+from cryptography.utils import CryptographyDeprecationWarning
+
+# Suppress specific deprecation warnings
+warnings.filterwarnings("ignore", category=CryptographyDeprecationWarning)
+
+def clear_screen():
+    logging.debug("Entered clear_screen function")
+    if os.name == 'nt':
+        _ = os.system('cls')
+    else:
+        _ = os.system('clear')
+        
+clear_screen()
+print("")
+print(f"Hetzner Cloud Management Tool v{version}")
+print("")
+
+import platform
+import time
+import hashlib
+import getpass
+import select
+import requests
+import paramiko
+import re
+from colorama import Fore, Style
+
+easy_server = False
 
 DEBUG_MODE = False
 
@@ -357,13 +389,6 @@ def create_and_upload_ssh_key(ssh_key_name=None):
     else:
         print("Failed to upload SSH key.", response.text)
         return None, None
-    
-def clear_screen():
-    logging.debug("Entered clear_screen function")
-    if os.name == 'nt':
-        _ = os.system('cls')
-    else:
-        _ = os.system('clear')
 
 def is_valid_hostname(hostname):
     logging.debug("Entered is_valid_hostname function")
@@ -1261,15 +1286,27 @@ def main_menu():
                 input("Press Enter to exit...")
                 sys.exit()
             print("")
-            server_type_name = input("Enter the name of the server type you want to use \n"
-                                     f"  [default: cpx51]: ") or "cpx51"
-            chosen_server_type = next((st for st in server_types if st['name'] == server_type_name), None)
+
+            # Default server type selection logic
+            default_server_type_name = None
+            if any(st['name'] == 'cx52' for st in server_types):
+                default_server_type_name = 'cx52'
+            elif any(st['name'] == 'cpx51' for st in server_types):
+                default_server_type_name = 'cpx51'
+                
+            print("")
+            server_type_name = input(f"Enter the name of the server type you want to use \n"  
+                                     f" [default: {default_server_type_name if default_server_type_name else 'None'}]: ") or default_server_type_name
+            if default_server_type_name and server_type_name == default_server_type_name:
+                chosen_server_type = next(st for st in server_types if st['name'] == default_server_type_name)
+            else:
+                chosen_server_type = next((st for st in server_types if st['name'] == server_type_name), None)
+
             if chosen_server_type:
                 server_type_id = chosen_server_type['id']
             else:
-                print(f"Server type '{server_type_name}' not found. Defaulting to 'cpx51'.")
-                chosen_server_type = next((st for st in server_types if st['name'] == 'cpx51'), None)
-                server_type_id = chosen_server_type['id'] if chosen_server_type else None
+                print(f"Server type '{server_type_name}' not found. Exiting.")
+                sys.exit()
             logging.debug(f"Chosen server type: {server_type_name}")
 
             # Server firewall
