@@ -1,5 +1,5 @@
 # Version of the script
-version = "0.2.8.0"
+version = "0.2.8.1"
 
 import sys
 import subprocess
