@@ -301,19 +301,6 @@ def install_python():
         logging.error("Python installation check failed.")
 
 install_python()
-
-def make_api_call(url, headers):
-    """Utility function to make API calls and handle failures."""
-    try:
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()  # This will raise an exception for HTTP errors
-        return response
-    except requests.exceptions.HTTPError as e:
-        print("API call failed, possibly due to a bad API key.")
-        # Reset API key if there is a failure in the call
-        global api_key
-        api_key = None
-        return None
     
 def pause_and_return():
     input("Press any key to continue...")
@@ -689,9 +676,24 @@ def create_shortcut(command, wdir, name, icon, nodeuser):
     shortcut.save()
 
 def create_symlink(target, link_name):
+    # Ensure the directory for the symlink exists
+    link_dir = os.path.dirname(link_name)
+    if not os.path.exists(link_dir):
+        os.makedirs(link_dir)
+        print(f"Created directory for symlink: {link_dir}")
+    
+    # Check if the target exists
+    if not os.path.exists(target):
+        print(f"Error: Target '{target}' does not exist. Symlink creation aborted.")
+        return
+    
+    # If the symlink already exists, remove it
     if os.path.exists(link_name):
         os.remove(link_name)
+    
+    # Create the symlink
     os.symlink(target, link_name)
+    print(f"Symlink created: {link_name} -> {target}")
 
 def run_command(command):
     try:
@@ -1096,28 +1098,37 @@ def check_server_name_availability(server_name):
 def get_api_key():
     global api_key
     if api_key is None:
-        print(Fore.LIGHTWHITE_EX + "Hetzner Cloud Management Tool (HCMT) - " + version)
-        print("This script was written by " + Fore.CYAN + "@Proph151Music" + Fore.LIGHTWHITE_EX + " for the Constellation Network ecosystem." + Style.RESET_ALL)
-        print("")
-        print("Don't forget to tip the bar tender!"+ Style.RESET_ALL)
-        print("----> " + Fore.YELLOW + "DAG0Zyq8XPnDKRB3wZaFcFHjL4seCLSDtHbUcYq3" + Style.RESET_ALL)
-        print("")
-        print(Fore.LIGHTGREEN_EX + "Receive a €20 credit in your Hetzner account by using this unique promo link when you sign up:" + Style.RESET_ALL)
-        print(Fore.LIGHTCYAN_EX + "https://hetzner.cloud/?ref=2tjBU33OPhv6" + Style.RESET_ALL)
-        print("")
-        print("")
-        print(f"-===[ HETZNER API KEY ]===-")
-        print("")
-        print("To create a Hetzner Cloud API token, follow these steps:")
-        print(Fore.CYAN + "1. Log in to your Hetzner Cloud account.")
-        print('2. Navigate to the "API Tokens" section. (It is inside the Security section.)')
-        print("   https://console.hetzner.cloud/projects")
-        print("   You may need to create a New Project. Then go into the project.")
-        print("   Once inside the project click on Security at the bottom left. Then API tokens.")
-        print('3. Click "Generate API Token". Provide any name for the token and choose Read and Write.')
-        print("4. Copy the generated API key and paste it below." + Style.RESET_ALL)
-        print("")
-        api_key = input("Enter your Hetzner API Key: ")
+        while True:
+            clear_screen()
+            print(Fore.LIGHTWHITE_EX + "Hetzner Cloud Management Tool (HCMT) - " + version)
+            print("This script was written by " + Fore.CYAN + "@Proph151Music" + Fore.LIGHTWHITE_EX + " for the Constellation Network ecosystem." + Style.RESET_ALL)
+            print("")
+            print("Don't forget to tip the bar tender!"+ Style.RESET_ALL)
+            print("----> " + Fore.YELLOW + "DAG0Zyq8XPnDKRB3wZaFcFHjL4seCLSDtHbUcYq3" + Style.RESET_ALL)
+            print("")
+            print(Fore.LIGHTGREEN_EX + "Receive a €20 credit in your Hetzner account by using this unique promo link when you sign up:" + Style.RESET_ALL)
+            print(Fore.LIGHTCYAN_EX + "https://hetzner.cloud/?ref=2tjBU33OPhv6" + Style.RESET_ALL)
+            print("")
+            print("")
+            print(f"-===[ HETZNER API KEY ]===-")
+            print("")
+            print("To create a Hetzner Cloud API token, follow these steps:")
+            print(Fore.CYAN + "1. Log in to your Hetzner Cloud account.")
+            print('2. Navigate to the "API Tokens" section. (It is inside the Security section.)')
+            print("   https://console.hetzner.cloud/projects")
+            print("   You may need to create a New Project. Then go into the project.")
+            print("   Once inside the project click on Security at the bottom left. Then API tokens.")
+            print('3. Click "Generate API Token". Provide any name for the token and choose Read and Write.')
+            print("4. Copy the generated API key and paste it below." + Style.RESET_ALL)
+            print("")
+            api_key = input("Enter your Hetzner API Key: ").strip()
+
+            if len(api_key) == 64 and api_key.isalnum():
+                break
+            else:
+                print(Fore.RED + "Invalid API key. The key must be 64 characters long and contain only letters and numbers. Please try again." + Style.RESET_ALL)
+                input("Press Enter to retry...")
+
     return api_key
 
 def check_for_updates():
