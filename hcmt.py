@@ -1,5 +1,5 @@
 # Version of the script
-version = "0.2.8.1"
+version = "0.2.8.2"
 
 import sys
 import subprocess
@@ -891,6 +891,10 @@ def install_nodectl(host_ip, private_key_path):
     with open(config_path, 'a') as config_file:
         config_file.write(config_content + '\n')
 
+    private_key_path = format_path(private_key_path)
+    ssh_command_nodeuser = f"ssh -i {private_key_path} {nodeuser}@{host_ip}"
+    sftp_command_nodeuser = f"sftp -i {private_key_path} {nodeuser}@{host_ip}"
+
     # Create SSH shortcut
     if os.name == 'nt':
         create_shortcut(f'ssh -i {private_key_path} {nodeuser}@{host_ip}', folder_path, f'{folder_path}\\{server_name}_SSH_({nodeuser}).lnk', 'C:\\Windows\\System32\\shell32.dll,135', nodeuser)
@@ -900,10 +904,6 @@ def install_nodectl(host_ip, private_key_path):
         sftp_symlink_path = os.path.join(folder_path, f"SFTP to {server_name}")
         create_symlink(ssh_command_nodeuser, ssh_symlink_path)
         create_symlink(sftp_command_nodeuser, sftp_symlink_path)
-    
-    private_key_path = format_path(private_key_path)
-    ssh_command_nodeuser = f"ssh -i {private_key_path} {nodeuser}@{host_ip}"
-    sftp_command_nodeuser = f"sftp -i {private_key_path} {nodeuser}@{host_ip}"
 
     # Add the new details to the config file
     config_content = f"\nCommands to access your server (Post-NodeCTL Installation):\nSSH Command:    {ssh_command_nodeuser}\nSFTP Command:   {sftp_command_nodeuser}\n"
@@ -994,6 +994,8 @@ SFTP Command:   {sftp_command}
         folder_path = format_path(folder_path)
         folder_path_root = format_path(folder_path+"/root")
 
+        os.makedirs(folder_path_root, exist_ok=True)
+
         # Paths for shortcuts
         ssh_shortcut_path = os.path.join(folder_path_root, f"{server_name}_SSH_(root).lnk")
         sftp_shortcut_path = os.path.join(folder_path_root, f"{server_name}_SFTP_(root).lnk")
@@ -1013,8 +1015,6 @@ SFTP Command:   {sftp_command}
                 except ImportError:
                     subprocess.check_call([sys.executable, os.path.join(sys.exec_prefix, 'Scripts', 'pywin32_postinstall.py'), '-install'])
                 import win32com.client
-
-            os.makedirs(folder_path_root, exist_ok=True)
 
             # Config file path
             config_path = os.path.join(folder_path, f"{server_name}_config.txt")
