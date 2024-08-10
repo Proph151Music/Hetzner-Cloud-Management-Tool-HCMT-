@@ -110,7 +110,7 @@ for %%D in (
     "%LocalAppData%\Programs\Python\Python3*"
     "%ProgramFiles%\Python3*"
     "%ProgramFiles(x86)%\Python3*"
-    "%LOCALAPPDATA%\Microsoft\WindowsApps"
+    REM "%LOCALAPPDATA%\Microsoft\WindowsApps"
 ) do (
     echo Checking %%D for Python... >> %LOGFILE%
     if exist "%%D\python.exe" (
