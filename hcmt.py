@@ -1,5 +1,5 @@
 # Version of the script
-version = "0.2.8.2"
+version = "0.2.8.4"
 
 import sys
 import subprocess
@@ -308,8 +308,13 @@ def pause_and_return():
 
 def format_path(path):
     if os.name == 'nt':
-        return path.replace('/', '\\')
-    return path.replace('\\', '/')
+        # Normalize path for Windows, which converts forward slashes to backslashes
+        return os.path.normpath(path)
+    else:
+        # Normalize path for non-Windows systems, ensuring correct slashes
+        normalized_path = os.path.normpath(path)
+        # Replace double forward slashes with a single slash
+        return normalized_path.replace('//', '/')
 
 def create_and_upload_ssh_key(ssh_key_name=None):
     global api_key, global_passphrase
@@ -325,6 +330,11 @@ def create_and_upload_ssh_key(ssh_key_name=None):
 
     # Fetch existing SSH keys to check if it already exists
     response = requests.get(url, headers=headers)
+    if response.status_code != 200:
+        print("Failed to fetch existing SSH keys.")
+        input("Press Enter to exit...")
+        sys.exit(1)
+
     existing_keys = response.json().get('ssh_keys', [])
     for key in existing_keys:
         if key['name'] == ssh_key_name:
@@ -332,7 +342,7 @@ def create_and_upload_ssh_key(ssh_key_name=None):
             logger.debug("")
             key_path = os.path.expanduser(f"~/.ssh/{ssh_key_name}")
             key_path = format_path(key_path)
-            return key['id'], key_path  # Return the existing key ID and path if found
+            return key['id'], key_path 
 
     # Define the path for the new SSH key
     key_path = os.path.expanduser(f"~/.ssh/{ssh_key_name}")
@@ -347,8 +357,8 @@ def create_and_upload_ssh_key(ssh_key_name=None):
         if not global_passphrase:
             print("The passphrase cannot be blank.")
             continue
-        if re.search(r'[^\w@#$%^&+=]', global_passphrase):
-            print("The passphrase contains invalid characters. Only alphanumeric characters and @#$%^&+= are allowed.")
+        if re.search(r'[^\w@#$%^&+=!]', global_passphrase):
+            print("The passphrase contains invalid characters. Only alphanumeric characters and @#$%^&+=! are allowed.")
             continue
         confirmation = getpass.getpass("Confirm your passphrase: ")
         if global_passphrase != confirmation:
@@ -358,24 +368,35 @@ def create_and_upload_ssh_key(ssh_key_name=None):
 
     # Generate the SSH key with the provided passphrase
     cmd = f"ssh-keygen -t rsa -b 4096 -f \"{key_path}\" -N \"{global_passphrase}\" -C \"{ssh_key_name}\""
-    subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL)
+    result = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if result.returncode != 0:
+        print("Failed to create SSH key:", result.stderr.decode())
+        input("Press Enter to exit...")
+        sys.exit(1)
+
     print(f"{Fore.GREEN}SSH Key Pair successfully created.{Style.RESET_ALL}")
     print(f"SSH Private Key: {key_path}")
     print(f"SSH Public Key: {key_path}.pub")
 
     # Read the public key
-    with open(f"{key_path}.pub", "r") as file:
-        public_key = file.read().strip()
+    try:
+        with open(f"{key_path}.pub", "r") as file:
+            public_key = file.read().strip()
+    except Exception as e:
+        print(f"Failed to read the SSH public key: {e}")
+        input("Press Enter to exit...")
+        sys.exit(1)
 
     # Attempt to upload the new SSH key to Hetzner
     data = {'name': ssh_key_name, 'public_key': public_key}
     response = requests.post(url, headers=headers, json=data)
     if response.status_code == 201:
         print("SSH Key is now available in the Hetzner account.")
-        return response.json()['ssh_key']['id'], key_path  # Return the new key ID and path
+        return response.json()['ssh_key']['id'], key_path
     else:
         print("Failed to upload SSH key.", response.text)
-        return None, None
+        input("Press Enter to exit...")
+        sys.exit(1)
 
 def is_valid_hostname(hostname):
     logging.debug("Entered is_valid_hostname function")
@@ -816,7 +837,6 @@ def install_nodectl(host_ip, private_key_path):
         # Prompt for the SSH passphrase if needed
         if not ssh_passphrase:
             ssh_passphrase = getpass.getpass("Enter the SSH passphrase for your private key (leave blank if none): ")
-
         try:
             transport = paramiko.Transport((host_ip, 22))
             transport.connect(username='root', pkey=paramiko.RSAKey.from_private_key_file(private_key_path, password=ssh_passphrase))
