@@ -1,5 +1,5 @@
 # Version of the script
-version = "0.2.8.4"
+version = "0.2.8.5"
 
 import sys
 import subprocess
@@ -697,21 +697,25 @@ def create_shortcut(command, wdir, name, icon, nodeuser):
     shortcut.save()
 
 def create_symlink(target, link_name):
+    # Normalize the paths
+    target = format_path(target)
+    link_name = format_path(link_name)
+
     # Ensure the directory for the symlink exists
     link_dir = os.path.dirname(link_name)
     if not os.path.exists(link_dir):
         os.makedirs(link_dir)
         print(f"Created directory for symlink: {link_dir}")
-    
+
     # Check if the target exists
     if not os.path.exists(target):
         print(f"Error: Target '{target}' does not exist. Symlink creation aborted.")
         return
-    
+
     # If the symlink already exists, remove it
     if os.path.exists(link_name):
         os.remove(link_name)
-    
+
     # Create the symlink
     os.symlink(target, link_name)
     print(f"Symlink created: {link_name} -> {target}")
@@ -721,6 +725,7 @@ def run_command(command):
         result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         return result.stdout.decode().strip(), result.stderr.decode().strip()
     except subprocess.CalledProcessError as e:
+        logger.error(f"Command failed with exit status {e.returncode}: {e.stderr.decode().strip()}")
         return None, f"Command failed with exit status {e.returncode}: {e.stderr.decode().strip()}"
 
 def add_host_key_to_known_hosts(host_ip):
@@ -907,18 +912,18 @@ def install_nodectl(host_ip, private_key_path):
     # Add the new details to the config file
     config_content = f"\n\nInstall your node after logging in with root and running the following command...\n\n{commands_txt}\n"
 
-    config_path = os.path.join(folder_path, f"{server_name}_config.txt")
+    config_path = format_path(os.path.join(folder_path, f"{server_name}_config.txt"))
     with open(config_path, 'a') as config_file:
         config_file.write(config_content + '\n')
 
     private_key_path = format_path(private_key_path)
-    ssh_command_nodeuser = f"ssh -i {private_key_path} {nodeuser}@{host_ip}"
-    sftp_command_nodeuser = f"sftp -i {private_key_path} {nodeuser}@{host_ip}"
+    ssh_command_nodeuser = f"ssh -i {format_path(private_key_path)} {nodeuser}@{host_ip}"
+    sftp_command_nodeuser = f"sftp -i {format_path(private_key_path)} {nodeuser}@{host_ip}"
 
     # Create SSH shortcut
     if os.name == 'nt':
-        create_shortcut(f'ssh -i {private_key_path} {nodeuser}@{host_ip}', folder_path, f'{folder_path}\\{server_name}_SSH_({nodeuser}).lnk', 'C:\\Windows\\System32\\shell32.dll,135', nodeuser)
-        create_shortcut(f'sftp -i {private_key_path} {nodeuser}@{host_ip}', folder_path, f'{folder_path}\\{server_name}_SFTP_({nodeuser}).lnk', 'C:\\Windows\\System32\\shell32.dll,146', nodeuser)
+        create_shortcut(f'ssh -i {private_key_path} {nodeuser}@{host_ip}', format_path(folder_path), f'{format_path(folder_path)}\\{server_name}_SSH_({nodeuser}).lnk', 'C:\\Windows\\System32\\shell32.dll,135', nodeuser)
+        create_shortcut(f'sftp -i {private_key_path} {nodeuser}@{host_ip}', format_path(folder_path), f'{format_path(folder_path)}\\{server_name}_SFTP_({nodeuser}).lnk', 'C:\\Windows\\System32\\shell32.dll,146', nodeuser)
     elif os.name == 'posix' and platform.system() == 'Darwin':
         ssh_symlink_path = os.path.join(folder_path, f"SSH to {server_name}")
         sftp_symlink_path = os.path.join(folder_path, f"SFTP to {server_name}")
@@ -950,8 +955,8 @@ def install_nodectl(host_ip, private_key_path):
     print(Fore.LIGHTCYAN_EX + f'SSH Command:    {ssh_command_nodeuser}')
     print(f'SFTP Command:   {sftp_command_nodeuser}')
     print("")
-    print(f'SSH Shortcut:    {folder_path}\\{server_name}_SSH_({nodeuser}).lnk')
-    print(f'SFTP Shortcut:   {folder_path}\\{server_name}_SFTP_({nodeuser}).lnk' + Style.RESET_ALL)
+    print(f'SSH Shortcut:    {format_path(folder_path)}\\{server_name}_SSH_({nodeuser}).lnk')
+    print(f'SFTP Shortcut:   {format_path(folder_path)}\\{server_name}_SFTP_({nodeuser}).lnk' + Style.RESET_ALL)
 
 def create_server(server_name_param, server_type_id, image, location, firewall_id, ssh_key_name):
     global api_key, global_passphrase, ssh_shortcut_path, sftp_shortcut_path, folder_path, nodeuser, server_name, easy_server
@@ -1017,8 +1022,8 @@ SFTP Command:   {sftp_command}
         os.makedirs(folder_path_root, exist_ok=True)
 
         # Paths for shortcuts
-        ssh_shortcut_path = os.path.join(folder_path_root, f"{server_name}_SSH_(root).lnk")
-        sftp_shortcut_path = os.path.join(folder_path_root, f"{server_name}_SFTP_(root).lnk")
+        ssh_shortcut_path = format_path(os.path.join(folder_path_root, f"{server_name}_SSH_(root).lnk"))
+        sftp_shortcut_path = format_path(os.path.join(folder_path_root, f"{server_name}_SFTP_(root).lnk"))
 
         if os.name == 'nt':
             # Ensure pywin32 is installed on Windows
