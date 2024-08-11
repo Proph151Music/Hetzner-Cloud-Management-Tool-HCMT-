@@ -1,5 +1,5 @@
 # Version of the script
-version = "0.2.8.5"
+version = "0.2.8.6"
 
 import sys
 import subprocess
@@ -553,7 +553,7 @@ def print_firewall_details(response_json):
         print(f"  - Direction: {rule['direction']} | Protocol: {rule['protocol']} | Port: {rule.get('port', 'N/A')} | Source IPs: {', '.join(rule['source_ips'])}")
 
 def get_public_ip():
-    return requests.get('https://api.ipify.org').text
+    return requests.get('https://ipv4.icanhazip.com').text.strip()
 
 # Function to create or update a firewall
 def create_or_update_firewall(firewall_name, inbound_ports):
